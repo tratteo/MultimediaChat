@@ -30,8 +30,7 @@ int main(int argv, char** argc)
 		char buf[BUF_SIZE];
 		while(true)
 		{
-			std::cin >> buf;
-			std::cout << buf << ", " << std::endl;
+			fgets(buf, BUF_SIZE, stdin);
 			write(clientSocket->GetFd(), buf, strlen(buf));
 		}
 	}
@@ -40,7 +39,7 @@ int main(int argv, char** argc)
 
 void CloseService(int signal)
 {
-	char* closeMsg = "DC";
+	char* closeMsg = "DC\n";
 	write(clientSocket->GetFd(), closeMsg, strlen(closeMsg));
 	free(clientSocket);
 	exit(EXIT_SUCCESS);

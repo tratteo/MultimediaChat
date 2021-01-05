@@ -1,3 +1,4 @@
+#pragma once
 #include <thread>
 #include <mutex>
 #include <sys/socket.h>
@@ -8,6 +9,7 @@
 #include <cstring>
 #include <vector>
 #include "../../common/errhandler.hpp"
+#include "../include/ClientSessionData.hpp"
 
 #define PORT 8080
 
@@ -24,14 +26,11 @@ class SSocket
 	SSocket();
 	~SSocket();
 
-	int AcceptConnection();
+	ClientSessionData* AcceptConnection();
 	void init(int type, int protocol);
 
 	//Getters
 	bool isConnected();
 	sockaddr_in getClientAddress();
 	int getServerSocket();
-
-	//Setters
-	void setConnected(bool);
 };

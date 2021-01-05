@@ -2,7 +2,7 @@
 
 SSocket::SSocket()
 {
-
+    
 }
 
 SSocket::~SSocket()
@@ -44,17 +44,19 @@ void SSocket::init(int type, int protocol)
     }
 }
 
-int SSocket::AcceptConnection()
+ClientSessionData* SSocket::AcceptConnection()
 {
     int socket_fd;
     if ((socket_fd = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) 
     { 
         handle_error("Unable to connect");
-        return -1;
+        return nullptr;
     }
     else
     {
-        return socket_fd;
+        char* ip = inet_ntoa(address.sin_addr);
+        ClientSessionData *data = new ClientSessionData(socket_fd, ip);
+        return data;
     }
      
 }

@@ -1,3 +1,4 @@
+
 #include "../include/SSocket.hpp"
 #include "../include/ClientHandler.hpp"
 #include <iostream>
@@ -17,11 +18,11 @@ int main()
 
     while(true)
     {
-        int fd; 
-        if((fd=serverSocket->AcceptConnection()) > 0)
+        ClientSessionData *data; 
+        if((data=serverSocket->AcceptConnection()) != nullptr)
         {
             std::cout<<"Accepted"<<std::endl;
-            ClientHandler *handler = new ClientHandler(fd);
+            ClientHandler *handler = new ClientHandler(data);
             handler->HandleConnection();
         }
     }
