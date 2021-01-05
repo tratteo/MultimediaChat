@@ -5,7 +5,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <iostream>
-#include "errhandler.hpp"
+#include "../../common/errhandler.hpp"
 #define PORT 8080
 
 class CSocket
@@ -13,18 +13,19 @@ class CSocket
 	private:
 
 	bool connected;
-	char* server_ip;
-	int socket_fd;
-	struct sockaddr_in serv_addr;
+	char* serverIp;
+	int socketFd;
+	struct sockaddr_in servAddr;
 
 	~CSocket();
 
 	public:
 
-	CSocket(char* server_ip);
-	void init(int type, int protocol);
-	void try_connect();
-	bool is_connected();
+	CSocket(char* serverIp);
+	void Init(int type, int protocol);
+	int GetFd();
+	void TryConnect();
+	bool IsConnected();
 	
 };
 

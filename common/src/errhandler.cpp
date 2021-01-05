@@ -1,4 +1,4 @@
-#include "../include/errhandler.hpp"
+#include "../errhandler.hpp"
 
 void handle_error(std::string message)
 {

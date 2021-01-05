@@ -3,29 +3,34 @@
 CSocket::CSocket(char* server_ip)
 {
 	connected = false;
-	this->server_ip = server_ip;
+	this->serverIp = server_ip;
 }
 
-void CSocket::init(int type, int protocol)
+int CSocket::GetFd()
 {
-	if ((socket_fd = socket(AF_INET, type, protocol)) < 0)
+	return socketFd;
+}
+
+void CSocket::Init(int type, int protocol)
+{
+	if ((socketFd = socket(AF_INET, type, protocol)) < 0)
 	{
 		handle_error("Unable to create socket");
 	}
 	
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(PORT);
+	servAddr.sin_family = AF_INET;
+	servAddr.sin_port = htons(PORT);
 
 	// Convert IPv4 and IPv6 addresses from text to binary form, if the conversion fails, the ip format is not correct
-	if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0)
+	if (inet_pton(AF_INET, serverIp, &servAddr.sin_addr) <= 0)
 	{
 		handle_error("Invalid address/ Address not supported");
 	}
 }
 
-void CSocket::try_connect()
+void CSocket::TryConnect()
 {
-	if (connect(socket_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
+	if (connect(socketFd, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
 	{
 		handle_error("Connection Failed");
 	}
@@ -35,14 +40,15 @@ void CSocket::try_connect()
 	}
 }
 
-bool CSocket::is_connected()
+bool CSocket::IsConnected()
 {
 	return connected;
 }
 
 CSocket::~CSocket()
 {
-	int ret = close(socket_fd);
+	std::cout<<"Calling csocket destructor"<<std::endl;
+	int ret = close(socketFd);
 	if (ret < 0)
 	{
 		handle_error("Unable to close socket");
