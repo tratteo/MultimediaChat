@@ -1,4 +1,4 @@
-#include "CSocket.hpp"
+#include "../include/CSocket.hpp"
 
 CSocket::CSocket(char* server_ip)
 {

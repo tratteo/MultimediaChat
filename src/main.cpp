@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <iostream>
-#include "CSocket.hpp"
+#include "../include/CSocket.hpp"
 
 int main(int argv, char** argc)
 {
