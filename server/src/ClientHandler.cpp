@@ -1,8 +1,9 @@
 #include "../include/ClientHandler.hpp"
 
-ClientHandler::ClientHandler(ClientSessionData *sessionData)
+ClientHandler::ClientHandler(ClientSessionData *sessionData, std::list<UserData*> users)
 {
     this->sessionData = sessionData;
+    this->users = users;
 }
 
 ClientHandler::~ClientHandler()
@@ -35,6 +36,34 @@ void ClientHandler::Loop()
             Command(buf);
             memset(&buf, 0, sizeof(buf));
         }
+    }
+}
+
+void ClientHandler::LoginRoutine()
+{
+    std::cout << "Requiring login..." << std::endl;
+    write(sessionData->GetFd(), USERNAME_MSG, strlen(USERNAME_MSG));
+    char buf[BUF_SIZE] = {0};
+    int bytesRead = read(sessionData->GetFd(), buf, BUF_SIZE);
+    if(bytesRead == -1)
+    {
+        handle_error("Unable to read");
+    }
+    else
+    {
+        std::cout << "Username received: " << buf;
+        memset(&buf, 0, sizeof(buf));
+        write(sessionData->GetFd(), PASSWORD_MSG, strlen(PASSWORD_MSG));
+        bytesRead = read(sessionData->GetFd(), buf, BUF_SIZE);
+        if(bytesRead == -1)
+        {
+            handle_error("Unable to read");
+        }
+        else
+        {
+            std::cout << "Password received: " << buf <<std::endl;
+            std::cout << "Login successful " << buf;
+        }      
     }
 }
 

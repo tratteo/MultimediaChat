@@ -11,7 +11,6 @@
 class CSocket
 {
 	private:
-
 	bool connected;
 	char* serverIp;
 	int socketFd;

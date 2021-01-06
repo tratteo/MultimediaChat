@@ -4,6 +4,7 @@ ClientSessionData::ClientSessionData(int fd, char* ip)
 {
     this->fd = fd;
     this->ip = ip;
+    this->logged = false;
 }
 
 int ClientSessionData::GetFd()
@@ -14,4 +15,9 @@ int ClientSessionData::GetFd()
 char* ClientSessionData::GetIp()
 {
     return this->ip;
+}
+
+bool ClientSessionData::IsLogged()
+{
+    return logged;
 }

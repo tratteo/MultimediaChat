@@ -4,7 +4,7 @@ INCLUDES 	= -I/include -I../common
 SRCDIR 		= src
 SRCS 		= $(SRCDIR)/main.cpp $(SRCDIR)/CSocket.cpp ../common/src/errhandler.cpp
 OBJS 		= $(SRCS:.c=.o)
-TARGET		= mc_client
+TARGET		= mc_client.out
 
 .PHONY: depend clean
 
