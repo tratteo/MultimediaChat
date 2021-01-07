@@ -23,6 +23,7 @@ void ClientHandler::CloseConnection()
 void ClientHandler::Loop()
 {
     char buf[BUF_SIZE] = {0};
+<<<<<<< HEAD
     int bytesRead = -1;
     while (buf[0] != PACKET_CREDENTIALS)
     {
@@ -37,6 +38,8 @@ void ClientHandler::Loop()
     CredentialsPacket* packet = new CredentialsPacket(packetByteBuf);
     std::cout << "Received: " << packet->GetUsername() << ", " << packet->GetPassword() << std::endl;
 
+=======
+>>>>>>> 64672db9cb0205e382ca6be2ac8c5354714d018f
     while(!shutdownReq)
     {
         int bytesRead = read(sessionData->GetFd(), buf, BUF_SIZE);
@@ -55,6 +58,33 @@ void ClientHandler::Loop()
 
 void ClientHandler::LoginRoutine()
 {
+<<<<<<< HEAD
+=======
+    std::cout << "Requiring login..." << std::endl;
+    write(sessionData->GetFd(), USERNAME_MSG, strlen(USERNAME_MSG));
+    char buf[BUF_SIZE] = {0};
+    int bytesRead = read(sessionData->GetFd(), buf, BUF_SIZE);
+    if(bytesRead == -1)
+    {
+        handle_error("Unable to read");
+    }
+    else
+    {
+        std::cout << "Username received: " << buf;
+        memset(&buf, 0, sizeof(buf));
+        write(sessionData->GetFd(), PASSWORD_MSG, strlen(PASSWORD_MSG));
+        bytesRead = read(sessionData->GetFd(), buf, BUF_SIZE);
+        if(bytesRead == -1)
+        {
+            handle_error("Unable to read");
+        }
+        else
+        {
+            std::cout << "Password received: " << buf <<std::endl;
+            std::cout << "Login successful " << buf;
+        }      
+    }
+>>>>>>> 64672db9cb0205e382ca6be2ac8c5354714d018f
 }
 
 void ClientHandler::Command(char* command)
