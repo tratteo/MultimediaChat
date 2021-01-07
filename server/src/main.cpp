@@ -1,9 +1,17 @@
 
+<<<<<<< HEAD
 #include <iostream>
 #include <unistd.h>
 #include <list>
 #include "../include/SSocket.hpp"
 #include "../include/ClientHandler.hpp"
+=======
+#include "../include/SSocket.hpp"
+#include "../include/ClientHandler.hpp"
+#include <iostream>
+#include <unistd.h>
+#include <list>
+>>>>>>> 857cfa0d7bbe44fd74c36df1f5cee4da5cb0ece9
 #include "../include/Serializer.hpp"
 #include "../include/UserData.hpp"
 
