@@ -1,9 +1,9 @@
-
-#include "../include/SSocket.hpp"
-#include "../include/ClientHandler.hpp"
+#pragma once
 #include <iostream>
 #include <unistd.h>
 #include <list>
+#include "../include/SSocket.hpp"
+#include "../include/ClientHandler.hpp"
 #include "../include/Serializer.hpp"
 #include "../include/UserData.hpp"
 
@@ -19,7 +19,6 @@ int main()
 	signal(SIGINT, CloseService);
 	signal(SIGKILL, CloseService);
 	signal(SIGTERM, CloseService);
-
 
     auto users = PopulateUsers();
 
@@ -40,6 +39,11 @@ void CloseService(int signal)
     exit(EXIT_SUCCESS);
 }
 
+void ReceiveThread()
+{
+
+}
+
 std::list<UserData*> PopulateUsers()
 {
     std::list<UserData*> users;
@@ -56,7 +60,6 @@ std::list<UserData*> PopulateUsers()
             std::cout << "Adding: "+data->ToString();
             users.push_front(data);
         }
-
     }
     return users;
 

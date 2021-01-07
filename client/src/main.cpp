@@ -1,17 +1,18 @@
+#pragma once
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
 #include <iostream>
 #include "../include/CSocket.hpp"
+#include "../../common/packets/CredentialsPacket.cpp"
+#include "../../common/ByteBufferReader.hpp"
 #define BUF_SIZE 512
 
 void CloseService(int);
 void ExitWrapper(int code);
-int Read(char* bf);
-int Write(char* buf);
 void LoginRoutine();
-void RegisterRoutine();
 
+bool shutDown = false;
 CSocket* clientSocket;
 
 int main(int argv, char** argc)
@@ -33,34 +34,28 @@ int main(int argv, char** argc)
 	clientSocket->TryConnect();
 	if(clientSocket->IsConnected())
 	{
-
-		while(true)
+		std::cout << "1. Login\n0. Quit" << std::endl;
+		int choice = 0;
+		std::cin >> choice;
+		switch (choice)
 		{
-			std:: cout << "1. Login\n2. Register\n0. Quit" << std::endl;
-			int choice = 0;
-			std::cin>>choice;
-			switch (choice)
-			{
-				case 0:
-					ExitWrapper(EXIT_SUCCESS);
-				case 1:
-					LoginRoutine();
-					break;
-				case 2: 
-					RegisterRoutine();
-					break;
-				default:
-					break;
-			}
+			case 0:
+				ExitWrapper(EXIT_SUCCESS);
+			case 1:
+				LoginRoutine();
+				std::cin >> choice;
+				break;
+			default:
+				break;
 		}
 
-		LoginRoutine();
 		std::cout<<"Connected"<<std::endl;
 		char buf[BUF_SIZE];
 		while(true)
 		{
 			fgets(buf, BUF_SIZE, stdin);
-			write(clientSocket->GetFd(), buf, strlen(buf));
+			int written = write(clientSocket->GetFd(), buf, strlen(buf));
+			std::cout << written;
 		}
 	}
 	return EXIT_SUCCESS;
@@ -73,47 +68,24 @@ void CloseService(int signal)
 	ExitWrapper(EXIT_SUCCESS);
 }
 
+
+
 void LoginRoutine()
 {
-	char buf[BUF_SIZE] = {0};
+	std::string username;
+	std::string password;
 
-	int bytesRead = Read(buf);
-	std::cout << buf;
-	memset(&buf, 0, sizeof(buf));
+	std::cout << "Username: ";
+	std::cin >> username;
 
-	fgets(buf, BUF_SIZE, stdin);
-	Write(buf);
-	memset(&buf, 0, sizeof(buf));
+	std::cout << "Password: ";
+	std::cin >> password;
 
-	bytesRead = Read(buf);
-	std::cout << buf;
-	memset(&buf, 0, sizeof(buf));
-
-	fgets(buf, BUF_SIZE, stdin);
-	Write(buf);
-	memset(&buf, 0, sizeof(buf));
+	CredentialsPacket* credentials = new CredentialsPacket(username, password);
+	int written = Write(credentials->Serialize(), credentials->GetTotalLength(), clientSocket->GetFd());
+	std::cout << written;
 }
 
-void RegisterRoutine()
-{
-
-}
-
-int Write(char* buf)
-{
-	return write(clientSocket->GetFd(), buf, strlen(buf));
-}
-
-int Read(char* buf)
-{
-	int bytesRead = read(clientSocket->GetFd(), buf, BUF_SIZE);
-	if(bytesRead == -1)
-	{
-		handle_error("Unable to read");
-		return -1;
-	}
-	return bytesRead;
-}
 
 void ExitWrapper(int code)
 {

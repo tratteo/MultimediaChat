@@ -9,9 +9,10 @@
 #include "../include/UserData.hpp"
 #include "../../common/errhandler.hpp" 
 #include "../include/ClientSessionData.hpp"
+#include "../../common/packets/CredentialsPacket.cpp"
+#include "../../common/ByteBufferReader.hpp"
+
 #define BUF_SIZE 512
-#define USERNAME_MSG "Username: "
-#define PASSWORD_MSG "Password: "
 
 class ClientHandler
 {
