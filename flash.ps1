@@ -1,0 +1,2 @@
+﻿Remove-Item $env:ubuntu_home\Documents\MultimediaChat -Recurse -ErrorAction Ignore
+Copy-Item "$env:HOMEPATH\Documents\Projects\Progetti VS\MultimediaChat" -Destination $env:ubuntu_home\Documents\ -Recurse
