@@ -2,9 +2,9 @@ CC			= g++
 CFLAGS 		= -pthread -std=c++11
 INCLUDES 	= -I/include -I../common
 SRCDIR 		= src
-SRCS 		= $(SRCDIR)/main.cpp $(SRCDIR)/ClientHandler.cpp $(SRCDIR)/SSocket.cpp \
+SRCS 		= $(SRCDIR)/server.cpp $(SRCDIR)/ClientHandler.cpp $(SRCDIR)/SSocket.cpp \
 			  $(SRCDIR)/ClientSessionData.cpp ../common/src/errhandler.cpp $(SRCDIR)/Serializer.cpp \
-			  $(SRCDIR)/UserData.cpp ../common/packets/MessagePacket.cpp ../common/packets/CredentialsPacket.cpp ../common/src/ByteBufferReader.cpp
+			  $(SRCDIR)/UserData.cpp ../common/Payloads.cpp ../common/src/ByteBufferReader.cpp $(SRCDIR)/DatabaseHandler.cpp
 OBJS 		= $(SRCS:.c=.o)
 TARGET		= mc_server.out
 

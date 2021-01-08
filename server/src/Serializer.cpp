@@ -8,25 +8,24 @@ Serializer::Serializer(std::string filePath)
 
 bool Serializer::Append(std::string value)
 {
-    value.append("\n");
-    stream.open(filePath, std::fstream::out | std::fstream::app);
-    if(!stream.good())
+    outStream.open(filePath, std::ofstream::out | std::ofstream::app);
+    if (outStream.fail())
     {
         return false;
     }
-    stream << value;
-    stream.close();
+    outStream << value;
+    outStream.close();
     return true;
 }
 
 bool Serializer::Clean()
 {
-    stream.open(filePath, std::fstream::trunc | std::fstream::out);
-    if(!stream.good())
+    outStream.open(filePath, std::ofstream::trunc | std::ofstream::out);
+    if(outStream.fail())
     {
         return false;
     }
-    stream.close();
+    outStream.close();
     return true;
 }
 
@@ -34,15 +33,16 @@ std::list<std::string> Serializer::GetLines()
 {
     std::string line;
     std::list<std::string> lines;
-    stream.open(filePath, std::fstream::in);
-    if(!stream.good())
+    inStream.open(filePath, std::ifstream::in);
+    if(inStream.fail())
     {
         return lines;
     }
-    while (std::getline(stream, line)) 
+    while (std::getline(inStream, line))
     {
         lines.push_front(line);
     }
+    inStream.close();
     return lines;
 }
 

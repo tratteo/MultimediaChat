@@ -4,8 +4,9 @@
 #include <signal.h>
 #include <iostream>
 #include "../include/CSocket.hpp"
-#include "../../common/packets/CredentialsPacket.cpp"
 #include "../../common/ByteBufferReader.hpp"
+#include "../../common/Packet.cpp"
+#include "../../common/Payloads.cpp"
 #define BUF_SIZE 512
 
 void CloseService(int);
@@ -43,7 +44,6 @@ int main(int argv, char** argc)
 				ExitWrapper(EXIT_SUCCESS);
 			case 1:
 				LoginRoutine();
-				std::cin >> choice;
 				break;
 			default:
 				break;
@@ -54,8 +54,6 @@ int main(int argv, char** argc)
 		while(true)
 		{
 			fgets(buf, BUF_SIZE, stdin);
-			int written = write(clientSocket->GetFd(), buf, strlen(buf));
-			std::cout << written;
 		}
 	}
 	return EXIT_SUCCESS;
@@ -63,8 +61,9 @@ int main(int argv, char** argc)
 
 void CloseService(int signal)
 {
-	char* closeMsg = (char*)"DC\n";
-	write(clientSocket->GetFd(), closeMsg, strlen(closeMsg));
+	Packet* packet = new Packet(PAYLOAD_DISCONNECT, nullptr, 0);
+	Write(packet->Serialize(), packet->GetTotalLength(), clientSocket->GetFd());
+	delete packet;
 	ExitWrapper(EXIT_SUCCESS);
 }
 
@@ -81,14 +80,19 @@ void LoginRoutine()
 	std::cout << "Password: ";
 	std::cin >> password;
 
-	CredentialsPacket* credentials = new CredentialsPacket(username, password);
-	int written = Write(credentials->Serialize(), credentials->GetTotalLength(), clientSocket->GetFd());
+	CredentialsPayload credentials;
+	credentials.Create(username, password);
+
+	
+	Packet *packet = new Packet(PAYLOAD_CREDENTIALS, credentials.Serialize(), credentials.size);
+
+	int written = Write(packet->Serialize(), packet->GetTotalLength(), clientSocket->GetFd());
 	std::cout << written;
 }
 
 
 void ExitWrapper(int code)
 {
-	free(clientSocket);
+	delete clientSocket;
 	exit(code);
 }

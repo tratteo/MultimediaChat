@@ -16,8 +16,3 @@ char* ClientSessionData::GetIp()
 {
     return this->ip;
 }
-
-bool ClientSessionData::IsLogged()
-{
-    return logged;
-}

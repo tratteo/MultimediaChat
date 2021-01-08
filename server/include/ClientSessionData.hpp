@@ -5,10 +5,10 @@ class ClientSessionData
     ClientSessionData(int fd, char* ip);
     int GetFd();
     char* GetIp();
-    bool IsLogged();
+
+    bool logged;
 
     private:
     int fd;
-    bool logged;
     char* ip;
 };

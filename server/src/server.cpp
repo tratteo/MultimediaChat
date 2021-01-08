@@ -6,9 +6,11 @@
 #include "../include/ClientHandler.hpp"
 #include "../include/Serializer.hpp"
 #include "../include/UserData.hpp"
+#include "../include/DatabaseHandler.hpp"
 
 void CloseService(int);
-std::list<UserData*> PopulateUsers();
+
+DataBaseHandler* dataHandler;
 
 int main()
 {
@@ -20,7 +22,8 @@ int main()
 	signal(SIGKILL, CloseService);
 	signal(SIGTERM, CloseService);
 
-    auto users = PopulateUsers();
+    dataHandler = new DataBaseHandler();
+
 
     while(true)
     {
@@ -28,7 +31,7 @@ int main()
         if((data=serverSocket->AcceptConnection()) != nullptr)
         {
             std::cout<<"Accepted"<<std::endl;
-            ClientHandler *handler = new ClientHandler(data, users);
+            ClientHandler *handler = new ClientHandler(data, dataHandler);
             handler->HandleConnection();
         }
     }
@@ -36,31 +39,6 @@ int main()
 
 void CloseService(int signal)
 {
+    delete dataHandler;
     exit(EXIT_SUCCESS);
-}
-
-void ReceiveThread()
-{
-
-}
-
-std::list<UserData*> PopulateUsers()
-{
-    std::list<UserData*> users;
-    Serializer *ser = new Serializer("usersData.txt");
-    auto lines = ser->GetLines();
-    if(lines.size() > 0)
-    {
-        for (auto const& i : lines) 
-        {
-            int index = i.find("-");
-            std::string user = i.substr(0, index);
-            std::string password = i.substr(index+1, i.length());
-            UserData *data = new UserData(user, password);
-            std::cout << "Adding: "+data->ToString();
-            users.push_front(data);
-        }
-    }
-    return users;
-
 }

@@ -16,7 +16,8 @@ class Serializer
 
     private:
     int fd;
-    std::fstream stream;
+    std::ifstream inStream;
+    std::ofstream outStream;
     std::string filePath;
     bool FileValid();
 

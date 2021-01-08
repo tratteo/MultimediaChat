@@ -14,10 +14,10 @@ class CSocket
 	int socketFd;
 	struct sockaddr_in servAddr;
 
-	~CSocket();
 
 	public:
 
+	~CSocket();
 	CSocket(char* serverIp);
 	void Init(int type, int protocol);
 	int GetFd();

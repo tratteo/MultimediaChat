@@ -2,7 +2,7 @@ CC			= g++
 CFLAGS 		= -std=c++11 -pthread
 INCLUDES 	= -I/include -I../common
 SRCDIR 		= src
-SRCS 		= $(SRCDIR)/main.cpp $(SRCDIR)/CSocket.cpp ../common/src/errhandler.cpp ../common/packets/CredentialsPacket.cpp ../common/src/ByteBufferReader.cpp
+SRCS 		= $(SRCDIR)/client.cpp $(SRCDIR)/CSocket.cpp ../common/src/errhandler.cpp ../common/Payloads.cpp ../common/src/ByteBufferReader.cpp ../common/Packet.cpp
 OBJS 		= $(SRCS:.c=.o)
 TARGET		= mc_client.out
 

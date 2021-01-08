@@ -1,15 +1,16 @@
 #include "../include/ClientHandler.hpp"
 
-ClientHandler::ClientHandler(ClientSessionData *sessionData, std::list<UserData*> users)
+ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler)
 {
     this->sessionData = sessionData;
-    this->users = users;
+    this->dataHandler = dataHandler;
 }
 
 ClientHandler::~ClientHandler()
 {
-
+    CloseConnection();
 }
+
 void ClientHandler::CloseConnection()
 {
     shutdownReq = true;
@@ -23,48 +24,58 @@ void ClientHandler::CloseConnection()
 void ClientHandler::Loop()
 {
     char buf[BUF_SIZE] = {0};
-    int bytesRead = -1;
-    while (buf[0] != PACKET_CREDENTIALS)
+    int bytesRead;
+    while (!shutdownReq)
     {
         bytesRead = Read(buf, BUF_SIZE, sessionData->GetFd());
-    }
-    char* packetByteBuf = new char[bytesRead];
-    for (int i = 0; i < bytesRead; i++)
-    {
-        packetByteBuf[i] = buf[i];
-    }
-    std::cout << "Read: " << bytesRead << std::endl;
-    CredentialsPacket* packet = new CredentialsPacket(packetByteBuf);
-
-    std::cout << "Received: " << packet->GetUsername() << ", " << packet->GetPassword() << std::endl;
-
-    while(!shutdownReq)
-    {
-        int bytesRead = read(sessionData->GetFd(), buf, BUF_SIZE);
-        if(bytesRead == -1)
+        if (bytesRead > 0)
         {
-            handle_error("Unable to read");
+            switch ((uint16_t)buf[0])
+            {
+                case PAYLOAD_DISCONNECT:
+                {
+                    delete this;
+                    break;
+                }
+                case PAYLOAD_CREDENTIALS:
+                {
+                    sessionData->logged = true;
+                    Packet* packet = new Packet(buf);
+                    CredentialsPayload credentials;
+                    credentials.Deserialize(packet->GetData());
+
+                    std::cout << "Username: " << credentials.username << ", Password: " << credentials.password << std::endl;
+                    UserData* user = new UserData(credentials.username, credentials.password);
+                    dataHandler->AddUser(user);
+
+                    delete packet;
+                    delete user;
+                    break;
+                }
+                case PAYLOAD_MSG:
+                {
+                    if (sessionData->logged)
+                    {
+                        //TODO redirect message
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+            memset(&buf, 0, BUF_SIZE);
         }
-        else
-        {
-            std::cout << "Received: " << buf;
-            Command(buf);
-            memset(&buf, 0, sizeof(buf));
-        }
-    }
+
+    }   
 }
 
 void ClientHandler::LoginRoutine()
 {
 }
 
-void ClientHandler::Command(char* command)
+void ClientHandler::ReceiveDeamon()
 {
-    std::string strMsg(command);
-    if(strMsg == "DC\n")
-    {
-        CloseConnection();
-    }    
+
 }
 
 void ClientHandler::HandleConnection()

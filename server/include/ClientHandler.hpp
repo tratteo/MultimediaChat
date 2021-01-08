@@ -9,28 +9,30 @@
 #include "../include/UserData.hpp"
 #include "../../common/errhandler.hpp" 
 #include "../include/ClientSessionData.hpp"
-#include "../../common/packets/CredentialsPacket.cpp"
+#include "../../common/Payloads.cpp"
+#include "../../common/Packet.cpp"
 #include "../../common/ByteBufferReader.hpp"
+#include "../include/DatabaseHandler.hpp"
 
 #define BUF_SIZE 512
 
 class ClientHandler
 {
     public:
-    ClientHandler(ClientSessionData *sessionData, std::list<UserData*> users);
+    ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler);
     ~ClientHandler();
     void HandleConnection();
 
     private:
-    std::list<UserData*> users;
+    
     ClientSessionData *sessionData;
+    DataBaseHandler *dataHandler;
 
+    void ReceiveDeamon();
     void LoginRoutine();
     bool shutdownReq = false;
     void CloseConnection();
     std::thread clientThread;
 
     void Loop();
-    void Command(char* command);
-
 };

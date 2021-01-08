@@ -5,14 +5,21 @@ class Packet
 {
 	public:
 
-	Packet(char id)
+	~Packet()
 	{
-		this->id = id;
+		delete data;
+	}
+
+	Packet(char type, char* payload, int payloadLength)
+	{
+		data = payload;
+		this->type = type;
+		this->length = payloadLength;
 	}
 
 	Packet(char* packetByteBuf)
 	{
-		id = packetByteBuf[0];
+		type = packetByteBuf[0];
 		length = 0x0;
 		for (int i = 1; i < 5; i++)
 		{
@@ -25,7 +32,7 @@ class Packet
 	char* Serialize()
 	{
 		char* packetByteBuf = new char[length + 5];
-		packetByteBuf[0] = id;
+		packetByteBuf[0] = type;
 		
 		for (int i = 1; i < 5; i++)
 		{
@@ -36,12 +43,13 @@ class Packet
 	}
 
 	// Getters
-	char GetId() { return id; }
+	char GetType() { return type; }
 	int GetLength() { return length; }
 	int GetTotalLength() { return length + 5; }
+	char* GetData() { return data; }
 
 	protected:
-	char id;
+	char type;
 	int length;
 	char* data;
 

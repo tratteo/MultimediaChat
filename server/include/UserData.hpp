@@ -8,7 +8,9 @@ class UserData
     std::string password;
 
     public:
+    UserData();
     UserData(std::string username, std::string password);
+    void FromString(std::string);
     std::string ToString();
     std::string GetUsername();
     std::string GetPassword();
