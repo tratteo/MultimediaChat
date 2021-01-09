@@ -4,33 +4,46 @@
 #define PAYLOAD_MSG 1
 #define PAYLOAD_CREDENTIALS 2
 #define PAYLOAD_DISCONNECT 3
+#define PAYLOAD_LOGGED_IN 4
+#define PAYLOAD_INVALID_CREDENTIALS 5
+#define PAYLOAD_REGISTERED 6
 
 struct MessagePayload
 {
-	std::string dstUsr;
+	std::string from;
+	std::string to;
 	std::string message;
-	int dstUsrLen;
+	int fromLen;
+	int toLen;
 	int messageLen;
 	int size;
 
-	void Create(std::string dstUsr, std::string message)
+	void Create(std::string from, std::string to, std::string message)
 	{
-		this->dstUsr = dstUsr;
+		this->from = from;
+		this->to = to;
 		this->message = message;
-		this->dstUsrLen = dstUsr.length();
+		this->fromLen = from.length();
+		this->toLen = to.length();
 		this->messageLen = message.length();
-		this->size = dstUsrLen + messageLen + 8;
+		this->size = fromLen + toLen + messageLen + 12;
 	}
 
 	void Deserialize(char* payload)
 	{
-		dstUsrLen = 0x0;
+		fromLen = 0x0;
+		toLen = 0x0;
 		messageLen = 0x0;
 
 		int offset = 0;
 		for (int i = 0; i < 4; i++)
 		{
-			dstUsrLen |= (payload[offset++] << (8 * (i - 1)));
+			fromLen |= (payload[offset++] << (8 * (i - 1)));
+		}
+
+		for (int i = 0; i < 4; i++)
+		{
+			toLen |= (payload[offset++] << (8 * (i - 1)));
 		}
 
 		for (int i = 0; i < 4; i++)
@@ -38,19 +51,26 @@ struct MessagePayload
 			messageLen |= (payload[offset++] << (8 * (i - 1)));
 		}
 
-		std::cout << "USRL: " << dstUsrLen << ", MSGL: " << messageLen << std::endl;
-		dstUsr = "";
+		from = "";
+		to = "";
 		message = "";
 
-		for (int i = 0; i < dstUsrLen; i++)
+		for (int i = 0; i < fromLen; i++)
 		{
-			dstUsr += payload[offset++];
+			from += payload[offset++];
 		}
+
+		for (int i = 0; i < toLen; i++)
+		{
+			to += payload[offset++];
+		}
+
 		for (int i = 0; i < messageLen; i++)
 		{
 			message += payload[offset++];
 		}
-		size = dstUsrLen + messageLen + 8;
+
+		size = fromLen + toLen + messageLen + 12;
 	}
 
 	char* Serialize()
@@ -59,15 +79,23 @@ struct MessagePayload
 		int offset = 0;
 		for (int i = 0; i < 4; i++)
 		{
-			buffer[offset++] = (char)(dstUsrLen >> (8 * (i - 1)));
+			buffer[offset++] = (char)(fromLen >> (8 * (i - 1)));
 		}
-		for (int i = 4; i < 8; i++)
+		for (int i = 0; i < 4; i++)
+		{
+			buffer[offset++] = (char)(toLen >> (8 * (i - 1)));
+		}
+		for (int i = 0; i < 4; i++)
 		{
 			buffer[offset++] = (char)(messageLen >> (8 * (i - 1)));
 		}
-		for (int i = 0; i < dstUsrLen; i++)
+		for (int i = 0; i < fromLen; i++)
 		{
-			buffer[offset++] = dstUsr.at(i);
+			buffer[offset++] = from.at(i);
+		}
+		for (int i = 0; i < toLen; i++)
+		{
+			buffer[offset++] = to.at(i);
 		}
 		for (int i = 0; i < messageLen; i++)
 		{
@@ -111,7 +139,6 @@ struct CredentialsPayload
 			passwordLen |= (payload[offset++] << (8 * (i - 1)));
 		}
 
-		std::cout << "USRL: " << usernameLen << ", MSGL: " << passwordLen << std::endl;
 		username = "";
 		password = "";
 

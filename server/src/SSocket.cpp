@@ -13,7 +13,7 @@ SSocket::~SSocket()
     }
 }
 
-void SSocket::init(int type, int protocol)
+void SSocket::Init(int type, int protocol)
 {
     if ((server_fd = socket(AF_INET, type, protocol)) == 0) 
     { 

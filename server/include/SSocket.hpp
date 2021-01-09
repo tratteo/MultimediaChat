@@ -27,10 +27,5 @@ class SSocket
 	~SSocket();
 
 	ClientSessionData* AcceptConnection();
-	void init(int type, int protocol);
-
-	//Getters
-	bool isConnected();
-	sockaddr_in getClientAddress();
-	int getServerSocket();
+	void Init(int type, int protocol);
 };

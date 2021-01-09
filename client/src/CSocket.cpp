@@ -47,7 +47,6 @@ bool CSocket::IsConnected()
 
 CSocket::~CSocket()
 {
-	std::cout<<"Calling csocket destructor"<<std::endl;
 	int ret = close(socketFd);
 	if (ret < 0)
 	{

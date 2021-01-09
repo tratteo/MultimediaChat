@@ -12,17 +12,17 @@ UserData::UserData(std::string username, std::string password)
 }
 
 
-std::string UserData::GetUsername()
+std::string UserData::GetUsername() const
 {
     return this->username;
 }
 
-std::string UserData::GetPassword()
+std::string UserData::GetPassword() const
 {
     return this->password;
 }
 
-std::string UserData::ToString()
+std::string UserData::ToString() const
 {
     return username + "-" + password + "\n";
 }
@@ -33,5 +33,11 @@ void UserData::FromString(std::string format)
     if (index == -1) return;
     username = format.substr(0, index);
     password = format.substr(index + 1, format.length());
+}
+
+void UserData::FromCredentials(std::string username, std::string password)
+{
+    this->username = username;
+    this->password = password;
 }
 

@@ -28,8 +28,9 @@ class ClientHandler
     ClientSessionData *sessionData;
     DataBaseHandler *dataHandler;
 
+
+
     void ReceiveDeamon();
-    void LoginRoutine();
     bool shutdownReq = false;
     void CloseConnection();
     std::thread clientThread;

@@ -1,17 +1,26 @@
 #pragma once
+#include <list>
 #include "UserData.hpp"
+#include "../include/ClientSessionData.hpp"
 #include "Serializer.hpp"
 #include <mutex>
+#include <algorithm>
 
 class DataBaseHandler
 {
 	public:
 	DataBaseHandler();
 	~DataBaseHandler();
+	void UserConnected(ClientSessionData* data);
+	void UserDisconnected(ClientSessionData* data);
+	ClientSessionData* GetUserSession(std::string username);
 
-	void AddUser(UserData* user);
+	UserData* GetRegisteredUser(std::string username);
+	void RegisterUser(UserData* user);
 	bool IsUserRegistered(UserData* user);
 	private:
-	std::recursive_mutex mutex;
+	std::mutex mutex;
+	std::list<ClientSessionData*> connectedUsers;
+	std::list<UserData> registeredUsers;
 	Serializer* usersSer;
 };

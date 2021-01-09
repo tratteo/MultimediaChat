@@ -11,12 +11,13 @@
 void CloseService(int);
 
 DataBaseHandler* dataHandler;
+std::list<ClientHandler*> handlers;
 
 int main()
 {
     SSocket *serverSocket = new SSocket();
-    std::cout<<"Initializing server..."<<std::endl;
-    serverSocket->init(SOCK_STREAM, 0);
+    std::cout << "Initializing server..." << std::endl;
+    serverSocket->Init(SOCK_STREAM, 0);
 
 	signal(SIGINT, CloseService);
 	signal(SIGKILL, CloseService);
@@ -24,15 +25,16 @@ int main()
 
     dataHandler = new DataBaseHandler();
 
-
+    std::cout << "Server started" << std::endl;
     while(true)
     {
         ClientSessionData *data; 
         if((data=serverSocket->AcceptConnection()) != nullptr)
         {
-            std::cout<<"Accepted"<<std::endl;
+            std::cout << "New connection accepted, handling..." << std::endl;
             ClientHandler *handler = new ClientHandler(data, dataHandler);
             handler->HandleConnection();
+            handlers.push_front(handler);
         }
     }
 }
@@ -40,5 +42,10 @@ int main()
 void CloseService(int signal)
 {
     delete dataHandler;
+    for (auto& h : handlers)
+    {
+        delete h;
+    }
+
     exit(EXIT_SUCCESS);
 }
