@@ -19,7 +19,7 @@
 class ClientHandler
 {
     public:
-    ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler);
+    ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler, void ( *OnDisconnect )(ClientHandler* ));
     ~ClientHandler();
     void HandleConnection();
 
@@ -34,6 +34,6 @@ class ClientHandler
     bool shutdownReq = false;
     void CloseConnection();
     std::thread clientThread;
-
+    void ( *OnDisconnect )(ClientHandler*);
     void Loop();
 };

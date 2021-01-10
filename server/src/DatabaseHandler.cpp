@@ -68,7 +68,7 @@ ClientSessionData* DataBaseHandler::GetUserSession(std::string username)
 void DataBaseHandler::RegisterUser(UserData* user)
 {   
     mutex.lock();
-	if (!IsUserRegistered(user))
+	if (!IsUserRegistered(user->GetUsername()))
 	{
         registeredUsers.push_front(*user);
         if (usersSer->Append(user->ToString()))
@@ -78,10 +78,11 @@ void DataBaseHandler::RegisterUser(UserData* user)
     mutex.unlock();
 }
 
-bool DataBaseHandler::IsUserRegistered(UserData* user)
+bool DataBaseHandler::IsUserRegistered(std::string username)
 {
     mutex.lock();
-    std::list<UserData>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&](UserData& data) { return user->GetUsername() == data.GetUsername(); });
-    return it != registeredUsers.end();
+    std::list<UserData>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&](UserData& data) { return username == data.GetUsername(); });
     mutex.unlock();
+    return it != registeredUsers.end();
+
 }

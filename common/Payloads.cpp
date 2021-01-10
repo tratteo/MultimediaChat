@@ -7,6 +7,7 @@
 #define PAYLOAD_LOGGED_IN 4
 #define PAYLOAD_INVALID_CREDENTIALS 5
 #define PAYLOAD_REGISTERED 6
+#define PAYLOAD_INEXISTENT_DEST 7
 
 struct MessagePayload
 {

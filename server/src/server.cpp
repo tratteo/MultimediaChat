@@ -9,7 +9,7 @@
 #include "../include/DatabaseHandler.hpp"
 
 void CloseService(int);
-
+void OnHandlerDisconnect(ClientHandler* handler);
 DataBaseHandler* dataHandler;
 std::list<ClientHandler*> handlers;
 
@@ -32,11 +32,17 @@ int main()
         if((data=serverSocket->AcceptConnection()) != nullptr)
         {
             std::cout << "New connection accepted, handling..." << std::endl;
-            ClientHandler *handler = new ClientHandler(data, dataHandler);
+            ClientHandler *handler = new ClientHandler(data, dataHandler, OnHandlerDisconnect);
             handler->HandleConnection();
             handlers.push_front(handler);
+            dataHandler->UserConnected(data);
         }
     }
+}
+
+void OnHandlerDisconnect(ClientHandler* handler)
+{
+    handlers.remove(handler);
 }
 
 void CloseService(int signal)

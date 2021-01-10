@@ -1,9 +1,10 @@
 #include "../include/ClientHandler.hpp"
 
-ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler)
+ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler, void (*OnDisconnect)(ClientHandler*))
 {
     this->sessionData = sessionData;
     this->dataHandler = dataHandler;
+    this->OnDisconnect = OnDisconnect;
 }
 
 ClientHandler::~ClientHandler()
@@ -40,6 +41,7 @@ void ClientHandler::CloseConnection()
         std::cout << "Connection " << sessionData->GetIp() << " disconnected without logging in" << std::endl;
     }
 
+    OnDisconnect(this);
     dataHandler->UserDisconnected(sessionData);
 }
 
@@ -66,7 +68,7 @@ void ClientHandler::Loop()
                     packet.FromByteBuf(buf);
                     credentials.Deserialize(packet.GetData());
                     UserData* user = new UserData(credentials.username, credentials.password);
-                    if (!dataHandler->IsUserRegistered(user))
+                    if (!dataHandler->IsUserRegistered(credentials.username))
                     {
                         dataHandler->RegisterUser(user);
                         sessionData->RegisterOwner(user);
@@ -74,7 +76,6 @@ void ClientHandler::Loop()
                         packet.Create(PAYLOAD_REGISTERED);
                         Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
                         sessionData->logged = true;
- 
                     }
                     else
                     {
@@ -84,7 +85,7 @@ void ClientHandler::Loop()
                             if (data->GetPassword() == credentials.password)
                             {
                                 packet.Create(PAYLOAD_LOGGED_IN);
-                                std::cout << credentials.username << " has logged in" << std::endl;
+                                std::cout << credentials.username << " has logged in"<< std::endl;
                                 Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
                                 sessionData->logged = true;
                                 sessionData->RegisterOwner(user);
@@ -92,12 +93,17 @@ void ClientHandler::Loop()
                             }
                             else
                             {
+                                delete user;
                                 //TODO bad credentials
                                 packet.Create(PAYLOAD_INVALID_CREDENTIALS);
                                 Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
                             }
                         }
-                        
+                        else
+                        {
+                            delete user;
+                        }
+                   
                     }
 
                     break;
@@ -111,8 +117,20 @@ void ClientHandler::Loop()
                         MessagePayload message;
                         message.Deserialize(packet.GetData());
 
-                        std::cout << message.from << " whispers to " << message.to << ": " << message.message << std::endl;
-                        //TODO redirect message
+                        if(dataHandler->IsUserRegistered(message.to))
+                        {
+                            std::cout << message.from << " whispers to " << message.to << ": " << message.message << std::endl;
+                            ClientSessionData* destData;
+                            if ((destData = dataHandler->GetUserSession(message.to)) != nullptr)
+                            {
+                                Write(packet.Serialize(), packet.GetTotalLength(), destData->GetFd());
+                            }
+                        }
+                        else
+                        {
+                            packet.Create(PAYLOAD_INEXISTENT_DEST);
+                            Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
+                        }
                     }
                     break;
                 }
@@ -122,7 +140,7 @@ void ClientHandler::Loop()
         }
         else
         {
-            std::cout << "Exiting loop force" << std::endl;
+            std::cout << "Client crashed " << std::endl;
             shutdownReq = true;
         }
         memset(&buf, 0, BUF_SIZE);

@@ -18,6 +18,7 @@ void ReceiveDaemon();
 bool logged = false;
 bool shutDown = false;
 CSocket* clientSocket;
+std::thread loginThread;
 std::string username;
 
 int main(int argv, char** argc)
@@ -42,7 +43,9 @@ int main(int argv, char** argc)
 	std::thread daemon(&ReceiveDaemon);
 	daemon.detach();
 
-	LoginRoutine();
+	loginThread = std::thread(&LoginRoutine);
+	loginThread.join();
+
 	std::cout << "Asking for login..." << std::endl;
 
 	while (!logged)
@@ -52,22 +55,48 @@ int main(int argv, char** argc)
 
 	while (true)
 	{
-		std::string line;
-		MessagePayload payload;
+		std::cout << "1. Write message" << std::endl << "0. Bye bye" << std::endl;
+		std::string buf;
+		int choice = 0;
+		std::getline(std::cin, buf);
+		try
+		{
+			choice = std::stoi(buf);
+		}
+		catch (std::exception e)
+		{
+			std::cout << "Numbers please \U0001F600" << std::endl;
+			continue;
+		}
 
-		std::cout << "Addressee: ";
-		std::getline(std::cin, line);
-		std::string dest = line;
+		switch (choice)
+		{
+			case 1:
+			{
+				std::string line;
+				MessagePayload payload;
 
-		std::cout << "Message: ";
-		std::getline(std::cin, line);
-		std::string message = line;
+				std::cout << "Addressee: ";
+				std::getline(std::cin, line);
+				std::string dest = line;
 
-		payload.Create(username, dest, message);
-		//std::cout << "F: " << payload.from << ",l: "<<payload.fromLen<< ", T: " << payload.to <<", l: "<<payload.toLen<< ", M: " << ", l: "<<payload.messageLen<< payload.message << std::endl;
-		Packet packet;
-		packet.FromData(PAYLOAD_MSG, payload.Serialize(), payload.size);
-		Write(packet.Serialize(), packet.GetTotalLength(), clientSocket->GetFd());
+				std::cout << "Message: ";
+				std::getline(std::cin, line);
+				std::string message = line;
+
+				payload.Create(username, dest, message);
+				//std::cout << "F: " << payload.from << ",l: "<<payload.fromLen<< ", T: " << payload.to <<", l: "<<payload.toLen<< ", M: " << ", l: "<<payload.messageLen<< payload.message << std::endl;
+				Packet packet;
+				packet.FromData(PAYLOAD_MSG, payload.Serialize(), payload.size);
+				Write(packet.Serialize(), packet.GetTotalLength(), clientSocket->GetFd());
+				break;
+			}
+			case 0:
+			{
+				CloseService(0);
+				ExitWrapper(EXIT_SUCCESS);
+			}
+		}
 	}
 	
 	return EXIT_SUCCESS;
@@ -94,16 +123,20 @@ void ReceiveDaemon()
 			{
 				case PAYLOAD_DISCONNECT:
 				{
-					std::cout << "Oops, server went terribly wrong :(, closing..." << std::endl;
+					std::cout << "Oops, server went terribly wrong :(" << std::endl;
 					ExitWrapper(0);
 					//TODO server disconnected
 					break;
 				}
 				case PAYLOAD_INVALID_CREDENTIALS:
 				{
+					logged = false;
 					std::cout << "Invalid credentials, try again" << std::endl;
-					std::thread loginThread(&LoginRoutine);
-					loginThread.detach();
+					if (loginThread.joinable())
+					{
+						loginThread.join();
+					}
+					loginThread = std::thread(&LoginRoutine);
 					//TODO invalid credentials, re ask for login
 					break;
 				}
@@ -131,6 +164,10 @@ void ReceiveDaemon()
 					//TODO user has received a message
 					break;
 				}
+				case PAYLOAD_INEXISTENT_DEST:
+				{
+					std::cout << "Are you sure the user you wrote to actually exists? Seems not to me" << std::endl;
+				}
 			}
 		}
 	}
@@ -151,7 +188,6 @@ void LoginRoutine()
 	Packet *packet = new Packet(PAYLOAD_CREDENTIALS, credentials.Serialize(), credentials.size);
 
 	int written = Write(packet->Serialize(), packet->GetTotalLength(), clientSocket->GetFd());
-
 	delete packet;
 }
 
