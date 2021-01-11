@@ -3,23 +3,14 @@
 #include <fstream>
 #include <iostream>
 #include <list>
-#include "sys/stat.h"
+#include <filesystem>
+#include <sys/stat.h> 
+#include <errno.h> 
 #include "../../common/errhandler.hpp"
 
-class Serializer
-{
-    public:
-    Serializer(std::string fileName);
-    bool Append(std::string value);
-    bool Clean();
-    std::list<std::string> GetLines();
 
-    private:
-    int fd;
-    std::ifstream inStream;
-    std::ofstream outStream;
-    std::string filePath;
-    bool FileValid();
-
-
-};
+bool Append(std::string value, std::string path, std::string filename);
+bool Overwrite(std::string value, std::string path, std::string filename);
+bool Clean(std::string path, std::string filename);
+std::list<std::string> GetLines(std::string path, std::string filename);
+bool CheckPath(std::string path);

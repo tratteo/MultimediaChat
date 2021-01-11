@@ -1,14 +1,11 @@
 #include "../include/Serializer.hpp"
 
 
-Serializer::Serializer(std::string filePath)
+bool Overwrite(std::string value, std::string path, std::string filename)
 {
-    this->filePath = filePath;
-}
-
-bool Serializer::Append(std::string value)
-{
-    outStream.open(filePath, std::ofstream::out | std::ofstream::app);
+    CheckPath(path);
+    std::ofstream outStream;
+    outStream.open(path + "/" + filename, std::ofstream::trunc | std::ofstream::out);
     if (outStream.fail())
     {
         return false;
@@ -18,9 +15,24 @@ bool Serializer::Append(std::string value)
     return true;
 }
 
-bool Serializer::Clean()
+bool Append(std::string value, std::string path, std::string filename)
 {
-    outStream.open(filePath, std::ofstream::trunc | std::ofstream::out);
+    CheckPath(path);
+    std::ofstream outStream;
+    outStream.open(path + "/" + filename, std::ofstream::out | std::ofstream::app);
+    if (outStream.fail())
+    {
+        return false;
+    }
+    outStream << value;
+    outStream.close();
+    return true;
+}
+
+bool Clean(std::string path, std::string filename)
+{
+    std::ofstream outStream;
+    outStream.open(path + "/" + filename, std::ofstream::trunc | std::ofstream::out);
     if(outStream.fail())
     {
         return false;
@@ -29,25 +41,35 @@ bool Serializer::Clean()
     return true;
 }
 
-std::list<std::string> Serializer::GetLines()
+std::list<std::string> GetLines(std::string path, std::string filename)
 {
+    std::ifstream inStream;
     std::string line;
     std::list<std::string> lines;
-    inStream.open(filePath, std::ifstream::in);
+    inStream.open(path + "/" + filename, std::ifstream::in);
     if(inStream.fail())
     {
         return lines;
     }
     while (std::getline(inStream, line))
     {
-        lines.push_front(line);
+        lines.push_back(line);
     }
     inStream.close();
     return lines;
 }
 
-bool Serializer::FileValid()
+bool CheckPath(std::string path)
 {
+    struct stat info;
     struct stat buffer;
-    return stat(filePath.c_str(), &buffer) == 0;
+    if ((stat(path.c_str(), &buffer) != 0))
+    {
+        mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }

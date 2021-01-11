@@ -8,6 +8,7 @@
 #define PAYLOAD_INVALID_CREDENTIALS 5
 #define PAYLOAD_REGISTERED 6
 #define PAYLOAD_INEXISTENT_DEST 7
+#define	PAYLOAD_OFFLINE_USR 8
 
 struct MessagePayload
 {
@@ -104,6 +105,11 @@ struct MessagePayload
 		}
 
 		return buffer;
+	}
+
+	std::string ToString()
+	{
+		return from + " -> " + to + ": " + message;
 	}
 };
 

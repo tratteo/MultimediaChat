@@ -23,6 +23,7 @@ int main()
 	signal(SIGKILL, CloseService);
 	signal(SIGTERM, CloseService);
 
+
     dataHandler = new DataBaseHandler();
 
     std::cout << "Server started" << std::endl;

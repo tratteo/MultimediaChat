@@ -11,6 +11,10 @@ UserData::UserData(std::string username, std::string password)
     this->password = password;
 }
 
+void UserData::AddChat(Chat chat)
+{
+    chats.push_back(chat);
+}
 
 std::string UserData::GetUsername() const
 {
@@ -26,6 +30,7 @@ std::string UserData::ToString() const
 {
     return username + "-" + password + "\n";
 }
+
 
 void UserData::FromString(std::string format)
 {

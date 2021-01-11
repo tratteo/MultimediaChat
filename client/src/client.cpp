@@ -65,7 +65,7 @@ int main(int argv, char** argc)
 		}
 		catch (std::exception e)
 		{
-			std::cout << "Numbers please \U0001F600" << std::endl;
+			std::cout << "Numbers please" << std::endl;
 			continue;
 		}
 
@@ -125,7 +125,6 @@ void ReceiveDaemon()
 				{
 					std::cout << "Oops, server went terribly wrong :(" << std::endl;
 					ExitWrapper(0);
-					//TODO server disconnected
 					break;
 				}
 				case PAYLOAD_INVALID_CREDENTIALS:
@@ -137,21 +136,18 @@ void ReceiveDaemon()
 						loginThread.join();
 					}
 					loginThread = std::thread(&LoginRoutine);
-					//TODO invalid credentials, re ask for login
 					break;
 				}
 				case PAYLOAD_LOGGED_IN:
 				{
 					std::cout << "Login successful" << std::endl;
 					logged = true;
-					//TODO user has logged in
 					break;
 				}
 				case PAYLOAD_REGISTERED:
 				{
 					std::cout << "User was not present in the database, registration successfull" << std::endl;
 					logged = true;
-					//TODO user has correctly been registered
 					break;
 				}
 				case PAYLOAD_MSG:
@@ -161,12 +157,17 @@ void ReceiveDaemon()
 					MessagePayload message;
 					message.Deserialize(packet.GetData());
 					std::cout << message.from << " whispers to you: " << message.message << std::endl;
-					//TODO user has received a message
 					break;
 				}
 				case PAYLOAD_INEXISTENT_DEST:
 				{
 					std::cout << "Are you sure the user you wrote to actually exists? Seems not to me" << std::endl;
+					break;
+				}
+				case PAYLOAD_OFFLINE_USR:
+				{
+					std::cout << "The user you tried to contact is offline" << std::endl;
+					break;
 				}
 			}
 		}

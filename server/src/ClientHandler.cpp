@@ -119,11 +119,16 @@ void ClientHandler::Loop()
 
                         if(dataHandler->IsUserRegistered(message.to))
                         {
-                            std::cout << message.from << " whispers to " << message.to << ": " << message.message << std::endl;
                             ClientSessionData* destData;
                             if ((destData = dataHandler->GetUserSession(message.to)) != nullptr)
                             {
                                 Write(packet.Serialize(), packet.GetTotalLength(), destData->GetFd());
+                                std::cout << message.from << " whispers to " << message.to << ": " << message.message << std::endl;
+                            }
+                            else
+                            {
+                                packet.Create(PAYLOAD_OFFLINE_USR);
+                                Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
                             }
                         }
                         else
@@ -145,11 +150,6 @@ void ClientHandler::Loop()
         }
         memset(&buf, 0, BUF_SIZE);
     }   
-
-}
-
-void ClientHandler::ReceiveDeamon()
-{
 
 }
 

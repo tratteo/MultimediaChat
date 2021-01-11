@@ -29,8 +29,6 @@ class ClientHandler
     DataBaseHandler *dataHandler;
 
 
-
-    void ReceiveDeamon();
     bool shutdownReq = false;
     void CloseConnection();
     std::thread clientThread;
