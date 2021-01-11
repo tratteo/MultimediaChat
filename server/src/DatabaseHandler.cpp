@@ -7,12 +7,19 @@ DataBaseHandler::DataBaseHandler()
 
 DataBaseHandler::~DataBaseHandler()
 {
-    std::string usrPath;
-    //TODO serialize chats
-    for (auto &usr : registeredUsers)
+    //TODO 
+    for (auto usr : registeredUsers)
     {
-        usrPath = usr.GetUsername();
-        Append(usr.ToString(), usrPath, "credentials.data");
+        std::cout << usr->GetUsername() << std::endl;
+        std::cout << usr->GetChats().size() << " chats" << std::endl;
+        std::string userDataFormat = "Credentials:" + usr->ToString();
+        for (auto& chat : usr->GetChats())
+        {
+            std::cout << chat->ToString(usr->GetUsername());
+            userDataFormat.append(chat->ToString(usr->GetUsername()));
+        }
+
+        Overwrite(userDataFormat, DATABASE_PATH, usr->GetUsername() + ".data");
     }
 }
 
@@ -22,24 +29,24 @@ void DataBaseHandler::ParseDatabase()
     std::list<std::string> lines;
     std::regex regex;
     std::smatch match;
-    UserData user;
-    Chat *currentChat = nullptr;
+    UserData *user;
     for (const auto& name : filenames)
     {
+        Chat* currentChat = nullptr;
         std::cout << "Filename: " << name << std::endl;
         
         std::list<std::string> lines = GetLines(DATABASE_PATH, name);
 
         for (const std::string& line : lines)
         {
-            std::cout << "Line: " << line << std::endl;
             // Find credentials
             if (std::regex_search(line, match, std::regex("Credentials:")))
             {
                 if (line.find("-") != std::string::npos)
                 {
-                    user.FromString(line.substr(line.find(":") + 1, line.length()));
-                    std::cout << "Credentials: " << user.ToString() << std::endl;
+                    user = new UserData();
+                    user->FromString(line.substr(line.find(":") + 1, line.length()));
+                    std::cout << "Credentials: " << user->ToString();
                 }
             }
             else if(std::regex_search(line, match, std::regex("Chat:")))
@@ -48,13 +55,11 @@ void DataBaseHandler::ParseDatabase()
                 //Find chat 
                 if (currentChat != nullptr)
                 {
-                    user.AddChat(*currentChat);
+                    user->AddChat(currentChat);
                     std::cout << "Adding last chat" << std::endl;
                 }
-                currentChat = new Chat();
-                currentChat->firstUser = user.GetUsername();
                 std::string dest = line.substr(line.find(":") + 1, line.length());
-                currentChat->secondUser = dest;
+                currentChat = new Chat(user->GetUsername(), dest);
                 std::cout << "Adding chat between: " << currentChat->firstUser << " and " << currentChat->secondUser << std::endl;
             }
             else 
@@ -77,6 +82,13 @@ void DataBaseHandler::ParseDatabase()
                 }
             }
         }
+
+        registeredUsers.push_back(user);
+        if (currentChat != nullptr)
+        {
+            user->AddChat(currentChat);
+            std::cout << "Adding last chat" << std::endl;
+        }
     }
 }
 
@@ -96,10 +108,10 @@ void DataBaseHandler::UserDisconnected(ClientSessionData* data)
 
 UserData* DataBaseHandler::GetRegisteredUser(std::string username)
 {
-    std::list<UserData>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&](UserData& data) { return username == data.GetUsername(); });
+    std::list<UserData*>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&](UserData* data) { return username == data->GetUsername(); });
     if (it != registeredUsers.end())
     {
-        return &(*it);
+        return *it;
     }
     else
     {
@@ -120,24 +132,58 @@ ClientSessionData* DataBaseHandler::GetUserSession(std::string username)
     }
 }
 
+void DataBaseHandler::AddMessage(MessagePayload message)
+{
+    Chat* chat;
+    ClientSessionData* fromSes = GetUserSession(message.from);
+    if (fromSes != nullptr)
+    {
+        chat = fromSes->GetOwner()->GetChatWith(message.to);
+        if (chat == nullptr)
+        {   
+            chat = new Chat(message.from, message.to);
+            fromSes->GetOwner()->AddChat(chat);
+            std::cout << "Adding chat" << std::endl;
+        }
+        std::cout << "Adding msg: " << message.ToString() << "to  user: " << fromSes->GetOwner()->GetUsername() << std::endl;
+        chat->AddMessage(message);
+    }
+    ClientSessionData* toSes = GetUserSession(message.to);
+    if (toSes != nullptr)
+    {
+        chat = toSes->GetOwner()->GetChatWith(message.from);
+        if (chat == nullptr)
+        {
+            chat = new Chat(message.to, message.from);
+            toSes->GetOwner()->AddChat(chat);
+            std::cout << "Adding chat" << std::endl;
+        }
+        std::cout << "Adding msg: " << message.ToString() << "to  user: " << toSes->GetOwner()->GetUsername() << std::endl;
+        chat->AddMessage(message);
+    }
+}
+
 void DataBaseHandler::RegisterUser(UserData* user)
 {   
     mutex.lock();
 	if (!IsUserRegistered(user->GetUsername()))
 	{
-        registeredUsers.push_front(*user);
+        registeredUsers.push_front(user);
 	}
     mutex.unlock();
 }
 
 bool DataBaseHandler::IsUserRegistered(std::string username)
 {
-    mutex.lock();
-    std::list<UserData>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&](UserData& data) { return username == data.GetUsername(); });
-    mutex.unlock();
+    if (registeredUsers.size() == 0)
+    {
+        return false;
+    }
+    std::list<UserData*>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&](UserData* data) { return username == data->GetUsername(); });
     return it != registeredUsers.end();
 
 }
+
 std::vector<std::string> DataBaseHandler::GetFilenames(std::string path)
 {
     std::vector<std::string> filenames;

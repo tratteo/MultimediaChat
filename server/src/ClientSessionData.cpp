@@ -2,7 +2,6 @@
 
 ClientSessionData::~ClientSessionData()
 {
-    delete owner;
 }
 
 ClientSessionData::ClientSessionData(int fd, char* ip)

@@ -25,13 +25,13 @@ class DataBaseHandler
 	ClientSessionData* GetUserSession(std::string username);
 
 	void ParseDatabase();
+	void AddMessage(MessagePayload message);
 	UserData* GetRegisteredUser(std::string username);
 	void RegisterUser(UserData* user);
 	bool IsUserRegistered(std::string username);
 	private:
 	bool ChatDataExists(std::string path);
-	std::list<Chat*> chats;
 	std::mutex mutex;
 	std::list<ClientSessionData*> connectedUsers;
-	std::list<UserData> registeredUsers;
+	std::list<UserData*> registeredUsers;
 };

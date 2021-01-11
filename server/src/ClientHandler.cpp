@@ -67,12 +67,12 @@ void ClientHandler::Loop()
                     CredentialsPayload credentials;
                     packet.FromByteBuf(buf);
                     credentials.Deserialize(packet.GetData());
-                    UserData* user = new UserData(credentials.username, credentials.password);
                     if (!dataHandler->IsUserRegistered(credentials.username))
                     {
+                        UserData* user = new UserData(credentials.username, credentials.password);
                         dataHandler->RegisterUser(user);
                         sessionData->RegisterOwner(user);
-                        std::cout << credentials.username << " has registered." << std::endl;
+                        std::cout << user->GetUsername() << " has registered." << std::endl;
                         packet.Create(PAYLOAD_REGISTERED);
                         Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
                         sessionData->logged = true;
@@ -88,22 +88,16 @@ void ClientHandler::Loop()
                                 std::cout << credentials.username << " has logged in"<< std::endl;
                                 Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
                                 sessionData->logged = true;
-                                sessionData->RegisterOwner(user);
+                                sessionData->RegisterOwner(data);
                                 //TODO logged in
                             }
                             else
                             {
-                                delete user;
                                 //TODO bad credentials
                                 packet.Create(PAYLOAD_INVALID_CREDENTIALS);
                                 Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
                             }
                         }
-                        else
-                        {
-                            delete user;
-                        }
-                   
                     }
 
                     break;
@@ -124,6 +118,7 @@ void ClientHandler::Loop()
                             {
                                 Write(packet.Serialize(), packet.GetTotalLength(), destData->GetFd());
                                 std::cout << message.from << " whispers to " << message.to << ": " << message.message << std::endl;
+                                dataHandler->AddMessage(message);
                             }
                             else
                             {

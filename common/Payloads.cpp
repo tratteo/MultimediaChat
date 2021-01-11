@@ -109,7 +109,7 @@ struct MessagePayload
 
 	std::string ToString()
 	{
-		return from + " -> " + to + ": " + message;
+		return from + ">" + to + ":" + message + "\n";
 	}
 };
 

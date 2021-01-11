@@ -7,11 +7,21 @@
 class Chat
 {
     public:
+
     Chat()
     {
+
     }
-    std::string firstUser;
+
+    Chat(std::string firstUser, std::string secondUser)
+    {
+        this->firstUser = firstUser;
+        this->secondUser = secondUser;
+    }
+
     std::string secondUser;
+    std::string firstUser;
+
     std::list<MessagePayload> messages;
 
     void AddMessage(MessagePayload message)
@@ -19,9 +29,10 @@ class Chat
         messages.push_back(message);
     }
 
-    std::string ToString()
+    std::string ToString(std::string owner)
     {
-        std::string res = firstUser + "-" + secondUser + "\n";
+        std::string subject = owner == firstUser ? secondUser : firstUser;
+        std::string res = "Chat:" + subject + "\n";
         for (auto& msg : messages)
         {
             res.append(msg.ToString());
