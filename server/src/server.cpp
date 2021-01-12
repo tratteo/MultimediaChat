@@ -1,4 +1,3 @@
-#pragma once
 #include <iostream>
 #include <unistd.h>
 #include <list>
@@ -11,11 +10,12 @@
 void CloseService(int);
 void OnHandlerDisconnect(ClientHandler* handler);
 DataBaseHandler* dataHandler;
+SSocket* serverSocket;
 std::list<ClientHandler*> handlers;
 
 int main()
 {
-    SSocket *serverSocket = new SSocket();
+    serverSocket = new SSocket();
     std::cout << "Initializing server..." << std::endl;
     serverSocket->Init(SOCK_STREAM, 0);
 
@@ -48,6 +48,7 @@ void OnHandlerDisconnect(ClientHandler* handler)
 
 void CloseService(int signal)
 {
+    delete serverSocket;
     delete dataHandler;
     for (auto& h : handlers)
     {

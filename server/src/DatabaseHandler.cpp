@@ -7,15 +7,17 @@ DataBaseHandler::DataBaseHandler()
 
 DataBaseHandler::~DataBaseHandler()
 {
-    //TODO 
+    SerializeDatabase();
+}
+
+void DataBaseHandler::SerializeDatabase()
+{
     for (auto usr : registeredUsers)
     {
-        std::cout << usr->GetUsername() << std::endl;
-        std::cout << usr->GetChats().size() << " chats" << std::endl;
+        std::cout << "Serializing data for user: " << usr->GetUsername() << std::endl;
         std::string userDataFormat = "Credentials:" + usr->ToString();
         for (auto& chat : usr->GetChats())
         {
-            std::cout << chat->ToString(usr->GetUsername());
             userDataFormat.append(chat->ToString(usr->GetUsername()));
         }
 
@@ -32,8 +34,8 @@ void DataBaseHandler::ParseDatabase()
     UserData *user;
     for (const auto& name : filenames)
     {
-        Chat* currentChat = nullptr;
-        std::cout << "Filename: " << name << std::endl;
+        ChatData* currentChat = nullptr;
+        std::cout << "Parsing: " << name << std::endl;
         
         std::list<std::string> lines = GetLines(DATABASE_PATH, name);
 
@@ -46,21 +48,21 @@ void DataBaseHandler::ParseDatabase()
                 {
                     user = new UserData();
                     user->FromString(line.substr(line.find(":") + 1, line.length()));
-                    std::cout << "Credentials: " << user->ToString();
+                    //std::cout << "Credentials: " << user->ToString();
                 }
             }
             else if(std::regex_search(line, match, std::regex("Chat:")))
             {
-                std::cout << "Found chat" << std::endl;
+                //std::cout << "Found chat" << std::endl;
                 //Find chat 
                 if (currentChat != nullptr)
                 {
                     user->AddChat(currentChat);
-                    std::cout << "Adding last chat" << std::endl;
+                    //std::cout << "Adding last chat" << std::endl;
                 }
                 std::string dest = line.substr(line.find(":") + 1, line.length());
-                currentChat = new Chat(user->GetUsername(), dest);
-                std::cout << "Adding chat between: " << currentChat->firstUser << " and " << currentChat->secondUser << std::endl;
+                currentChat = new ChatData(user->GetUsername(), dest);
+                //std::cout << "Adding chat between: " << currentChat->firstUser << " and " << currentChat->secondUser << std::endl;
             }
             else 
             {
@@ -74,7 +76,7 @@ void DataBaseHandler::ParseDatabase()
                         std::string to = line.substr(i1 + 1, i2 - i1 - 1);
                         std::string msg = line.substr(i2 + 1, line.length() - i2 - 1);
                         MessagePayload message;
-                        std::cout << "Adding message: " << from << "->"<<to<<": "<<msg << std::endl;
+                        //std::cout << "Adding message: " << from << "->"<<to<<": "<<msg << std::endl;
                         message.Create(from, to, msg);
                         currentChat->AddMessage(message);
 
@@ -87,7 +89,7 @@ void DataBaseHandler::ParseDatabase()
         if (currentChat != nullptr)
         {
             user->AddChat(currentChat);
-            std::cout << "Adding last chat" << std::endl;
+            //std::cout << "Adding last chat" << std::endl;
         }
     }
 }
@@ -134,18 +136,18 @@ ClientSessionData* DataBaseHandler::GetUserSession(std::string username)
 
 void DataBaseHandler::AddMessage(MessagePayload message)
 {
-    Chat* chat;
+    ChatData* chat;
     ClientSessionData* fromSes = GetUserSession(message.from);
     if (fromSes != nullptr)
     {
         chat = fromSes->GetOwner()->GetChatWith(message.to);
         if (chat == nullptr)
         {   
-            chat = new Chat(message.from, message.to);
+            chat = new ChatData(message.from, message.to);
             fromSes->GetOwner()->AddChat(chat);
-            std::cout << "Adding chat" << std::endl;
+            //std::cout << "Adding chat" << std::endl;
         }
-        std::cout << "Adding msg: " << message.ToString() << "to  user: " << fromSes->GetOwner()->GetUsername() << std::endl;
+        //std::cout << "Adding msg: " << message.ToString() << "to  user: " << fromSes->GetOwner()->GetUsername() << std::endl;
         chat->AddMessage(message);
     }
     ClientSessionData* toSes = GetUserSession(message.to);
@@ -154,11 +156,11 @@ void DataBaseHandler::AddMessage(MessagePayload message)
         chat = toSes->GetOwner()->GetChatWith(message.from);
         if (chat == nullptr)
         {
-            chat = new Chat(message.to, message.from);
+            chat = new ChatData(message.to, message.from);
             toSes->GetOwner()->AddChat(chat);
-            std::cout << "Adding chat" << std::endl;
+            //std::cout << "Adding chat" << std::endl;
         }
-        std::cout << "Adding msg: " << message.ToString() << "to  user: " << toSes->GetOwner()->GetUsername() << std::endl;
+        //std::cout << "Adding msg: " << message.ToString() << "to  user: " << toSes->GetOwner()->GetUsername() << std::endl;
         chat->AddMessage(message);
     }
 }

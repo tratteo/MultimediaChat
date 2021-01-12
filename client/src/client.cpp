@@ -1,4 +1,3 @@
-#pragma once
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
@@ -6,8 +5,8 @@
 #include <iostream>
 #include "../include/CSocket.hpp"
 #include "../../common/ByteBufferReader.hpp"
-#include "../../common/Packet.cpp"
-#include "../../common/Payloads.cpp"
+#include "../../common/Packet.hpp"
+#include "../../common/Payloads.hpp"
 #define BUF_SIZE 512
 
 void CloseService(int);

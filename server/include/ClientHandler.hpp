@@ -4,13 +4,13 @@
 #include <sys/socket.h> 
 #include <unistd.h> 
 #include <signal.h>
-#include <string.h>
+#include <string>
 #include <list>
 #include "../include/UserData.hpp"
 #include "../../common/errhandler.hpp" 
 #include "../include/ClientSessionData.hpp"
-#include "../../common/Payloads.cpp"
-#include "../../common/Packet.cpp"
+#include "../../common/Payloads.hpp"
+#include "../../common/Packet.hpp"
 #include "../../common/ByteBufferReader.hpp"
 #include "../include/DatabaseHandler.hpp"
 

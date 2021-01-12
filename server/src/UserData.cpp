@@ -11,19 +11,19 @@ UserData::UserData(std::string username, std::string password)
     this->password = password;
 }
 
-void UserData::AddChat(Chat* chat)
+void UserData::AddChat(ChatData* chat)
 {
     chats.push_back(chat);
 }
 
-std::list<Chat*> UserData::GetChats() const
+std::list<ChatData*> UserData::GetChats() const
 {
     return chats;
 }
 
-Chat* UserData::GetChatWith(std::string username)
+ChatData* UserData::GetChatWith(std::string username)
 {
-    std::list<Chat*>::iterator it = std::find_if(chats.begin(), chats.end(), [&](Chat* data) { return data->firstUser == username || data->secondUser == username; });
+    std::list<ChatData*>::iterator it = std::find_if(chats.begin(), chats.end(), [&](ChatData* data) { return data->firstUser == username || data->secondUser == username; });
     if (it != chats.end())
     {
         return *it;

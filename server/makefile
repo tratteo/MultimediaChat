@@ -4,14 +4,14 @@ INCLUDES 	= -I/include -I../common
 SRCDIR 		= src
 SRCS 		= $(SRCDIR)/server.cpp $(SRCDIR)/ClientHandler.cpp $(SRCDIR)/SSocket.cpp \
 			  $(SRCDIR)/ClientSessionData.cpp ../common/src/errhandler.cpp $(SRCDIR)/Serializer.cpp \
-			  $(SRCDIR)/UserData.cpp ../common/Payloads.cpp ../common/src/ByteBufferReader.cpp $(SRCDIR)/DatabaseHandler.cpp ../common/Chat.cpp
+			  $(SRCDIR)/UserData.cpp ../common/src/Payloads.cpp ../common/src/Packet.cpp ../common/src/ByteBufferReader.cpp $(SRCDIR)/DatabaseHandler.cpp $(SRCDIR)/ChatData.cpp
 OBJS 		= $(SRCS:.c=.o)
 TARGET		= mc_server.out
 
 .PHONY: depend clean
 
 all: $(TARGET)
-	@echo  Multimedia Chat server compiled, run with ./$(TARGET)
+	@echo  Multimedia ChatData server compiled, run with ./$(TARGET)
 
 $(TARGET): $(OBJS) 
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJS) $(LFLAGS) $(LIBS)

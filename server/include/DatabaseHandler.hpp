@@ -1,9 +1,5 @@
 #pragma once
 #include <list>
-#include "UserData.hpp"
-#include "../include/ClientSessionData.hpp"
-#include "../../common/Chat.cpp"
-#include "Serializer.hpp"
 #include <mutex>
 #include <vector>
 #include <algorithm>
@@ -11,8 +7,12 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <regex>
+#include "UserData.hpp"
+#include "../include/ClientSessionData.hpp"
+#include "../include/ChatData.hpp"
+#include "Serializer.hpp"
 
-#define DATABASE_PATH "../data"
+#define DATABASE_PATH "data"
 
 class DataBaseHandler
 {
@@ -24,6 +24,7 @@ class DataBaseHandler
 	void UserDisconnected(ClientSessionData* data);
 	ClientSessionData* GetUserSession(std::string username);
 
+	void SerializeDatabase();
 	void ParseDatabase();
 	void AddMessage(MessagePayload message);
 	UserData* GetRegisteredUser(std::string username);

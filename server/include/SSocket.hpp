@@ -6,7 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <iostream>
-#include <cstring>
+#include <string>
 #include <vector>
 #include "../../common/errhandler.hpp"
 #include "../include/ClientSessionData.hpp"
