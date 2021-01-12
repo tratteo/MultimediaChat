@@ -11,7 +11,7 @@
 #include "../include/ClientSessionData.hpp"
 #include "../../common/Payloads.hpp"
 #include "../../common/Packet.hpp"
-#include "../../common/ByteBufferReader.hpp"
+#include "../../common/NetworkHandler.hpp"
 #include "../include/DatabaseHandler.hpp"
 
 #define BUF_SIZE 512
@@ -22,15 +22,12 @@ class ClientHandler
     ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler, void ( *OnDisconnect )(ClientHandler* ));
     ~ClientHandler();
     void HandleConnection();
+    void CloseConnection();
 
     private:
-    
     ClientSessionData *sessionData;
     DataBaseHandler *dataHandler;
-
-
     bool shutdownReq = false;
-    void CloseConnection();
     std::thread clientThread;
     void ( *OnDisconnect )(ClientHandler*);
     void Loop();

@@ -44,7 +44,7 @@ void SSocket::Init(int type, int protocol)
     }
 }
 
-ClientSessionData* SSocket::AcceptConnection()
+ClientSessionData* SSocket::AcceptConnection() const
 {
     int socket_fd;
     if ((socket_fd = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) 

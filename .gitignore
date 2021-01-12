@@ -2,6 +2,8 @@
 *.d
 
 *.data
+data
+
 
 # Compiled Object files
 *.slo

@@ -7,12 +7,13 @@ class ClientSessionData
     ~ClientSessionData();
     ClientSessionData(int fd, char* ip);
     int GetFd() const;
-    void RegisterOwner(UserData* owner);
     char* GetIp() const;
     UserData* GetOwner() const;
-    bool logged;
+    bool IsLogged() const;
+    void UserLogged(UserData* owner);
 
     private:
+    bool logged;
     UserData* owner;
     int fd;
     char* ip;

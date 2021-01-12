@@ -1,5 +1,4 @@
-#include "ByteBufferReader.hpp"
-
+#include "NetworkHandler.hpp"
 
 int Write(char* buffer, int len, int fd)
 {
@@ -19,4 +18,11 @@ int Read(char* buffer, int bufSize, int fd)
 		return -1;
 	}
 	return bytesRead;
+}
+
+bool Send(Packet *packet, int fd)
+{
+	int packetLen = packet->GetTotalLength();
+	int sent = Write(packet->Serialize(), packetLen, fd);
+	return sent == packetLen;
 }

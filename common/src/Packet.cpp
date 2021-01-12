@@ -3,7 +3,10 @@
 
 Packet::~Packet()
 {
-	delete data;
+	if (data != nullptr)
+	{
+		delete data;
+	}
 }
 
 Packet::Packet()
@@ -21,7 +24,7 @@ Packet::Packet(char* packetByteBuf)
 	FromByteBuf(packetByteBuf);
 }
 
-char* Packet::Serialize()
+char* Packet::Serialize() const
 {
 	char* packetByteBuf = new char[length + 5];
 	packetByteBuf[0] = type;
@@ -36,7 +39,8 @@ char* Packet::Serialize()
 
 void Packet::FromData(char type, char* payload, int payloadLength)
 {
-	data = payload;
+	data = new char[payloadLength];
+	memcpy(data, payload, payloadLength);
 	this->type = type;
 	this->length = payloadLength;
 }
@@ -61,10 +65,10 @@ void Packet::Create(char type)
 }
 
 // Getters
-char Packet::GetType() { return type; }
+char Packet::GetType() const { return type; }
 
-int Packet::GetLength() { return length; }
+int Packet::GetLength() const { return length; }
 
-int Packet::GetTotalLength() { return length + 5; }
+int Packet::GetTotalLength() const { return length + 5; }
 
-char* Packet::GetData() { return data; }
+char* Packet::GetData() const { return data; }

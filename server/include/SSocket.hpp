@@ -16,16 +16,13 @@
 class SSocket
 {
     private:
-
 	int server_fd;
     struct sockaddr_in address;
     int addrlen;
 
     public:
-
 	SSocket();
 	~SSocket();
-
-	ClientSessionData* AcceptConnection();
+	ClientSessionData* AcceptConnection() const;
 	void Init(int type, int protocol);
 };

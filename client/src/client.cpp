@@ -4,7 +4,7 @@
 #include <thread>
 #include <iostream>
 #include "../include/CSocket.hpp"
-#include "../../common/ByteBufferReader.hpp"
+#include "../../common/NetworkHandler.hpp"
 #include "../../common/Packet.hpp"
 #include "../../common/Payloads.hpp"
 #define BUF_SIZE 512
@@ -87,7 +87,7 @@ int main(int argv, char** argc)
 				//std::cout << "F: " << payload.from << ",l: "<<payload.fromLen<< ", T: " << payload.to <<", l: "<<payload.toLen<< ", M: " << ", l: "<<payload.messageLen<< payload.message << std::endl;
 				Packet packet;
 				packet.FromData(PAYLOAD_MSG, payload.Serialize(), payload.size);
-				Write(packet.Serialize(), packet.GetTotalLength(), clientSocket->GetFd());
+				Send(&packet, clientSocket->GetFd());
 				break;
 			}
 			case 0:
@@ -105,7 +105,7 @@ void CloseService(int signal)
 {
 	Packet packet;
 	packet.Create(PAYLOAD_DISCONNECT);
-	Write(packet.Serialize(), packet.GetTotalLength(), clientSocket->GetFd());
+	Send(&packet, clientSocket->GetFd());
 	ExitWrapper(EXIT_SUCCESS);
 }
 
@@ -185,12 +185,11 @@ void LoginRoutine()
 	CredentialsPayload credentials;
 	credentials.Create(username, password);
 	
-	Packet *packet = new Packet(PAYLOAD_CREDENTIALS, credentials.Serialize(), credentials.size);
+	Packet packet;
+	packet.FromData(PAYLOAD_CREDENTIALS, credentials.Serialize(), credentials.size);
 
-	int written = Write(packet->Serialize(), packet->GetTotalLength(), clientSocket->GetFd());
-	delete packet;
+	Send(&packet, clientSocket->GetFd());
 }
-
 
 void ExitWrapper(int code)
 {

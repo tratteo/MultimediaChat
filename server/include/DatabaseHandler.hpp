@@ -17,7 +17,7 @@
 class DataBaseHandler
 {
 	public:
-	std::vector<std::string> GetFilenames(std::string path);
+	std::vector<std::string> GetFilenames(std::string path) const;
 	DataBaseHandler();
 	~DataBaseHandler();
 	void UserConnected(ClientSessionData* data);
@@ -31,7 +31,6 @@ class DataBaseHandler
 	void RegisterUser(UserData* user);
 	bool IsUserRegistered(std::string username);
 	private:
-	bool ChatDataExists(std::string path);
 	std::mutex mutex;
 	std::list<ClientSessionData*> connectedUsers;
 	std::list<UserData*> registeredUsers;

@@ -56,7 +56,7 @@ void MessagePayload::Deserialize(char* payload)
 	size = fromLen + toLen + messageLen + 12;
 }
 
-char* MessagePayload::Serialize()
+char* MessagePayload::Serialize() const
 {
 	char* buffer = new char[size];
 	int offset = 0;
@@ -88,11 +88,10 @@ char* MessagePayload::Serialize()
 	return buffer;
 }
 
-std::string MessagePayload::ToString()
+std::string MessagePayload::ToString() const
 {
 	return from + ">" + to + ":" + message + "\n";
 }
-
 
 
 void CredentialsPayload::Create(std::string username, std::string password)
@@ -135,7 +134,7 @@ void CredentialsPayload::Deserialize(char* payload)
 	size = usernameLen + passwordLen + 8;
 }
 
-char* CredentialsPayload::Serialize()
+char* CredentialsPayload::Serialize() const
 {
 	char* buffer = new char[size];
 	int offset = 0;
@@ -159,7 +158,7 @@ char* CredentialsPayload::Serialize()
 	return buffer;
 }
 
-std::string CredentialsPayload::ToString()
+std::string CredentialsPayload::ToString() const
 {
 	return username + "-" + password + "\n";
 }

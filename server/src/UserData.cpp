@@ -23,7 +23,12 @@ std::list<ChatData*> UserData::GetChats() const
 
 ChatData* UserData::GetChatWith(std::string username)
 {
-    std::list<ChatData*>::iterator it = std::find_if(chats.begin(), chats.end(), [&](ChatData* data) { return data->firstUser == username || data->secondUser == username; });
+    std::list<ChatData*>::iterator it = std::find_if(chats.begin(), chats.end(), [&](ChatData* data) 
+    { 
+        std::tuple<std::string, std::string> users = data->GetUsers();
+        return std::get<0>(users) == username || std::get<1>(users) == username;
+    });
+
     if (it != chats.end())
     {
         return *it;

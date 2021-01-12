@@ -4,7 +4,7 @@ INCLUDES 	= -I/include -I../common
 SRCDIR 		= src
 SRCS 		= $(SRCDIR)/server.cpp $(SRCDIR)/ClientHandler.cpp $(SRCDIR)/SSocket.cpp \
 			  $(SRCDIR)/ClientSessionData.cpp ../common/src/errhandler.cpp $(SRCDIR)/Serializer.cpp \
-			  $(SRCDIR)/UserData.cpp ../common/src/Payloads.cpp ../common/src/Packet.cpp ../common/src/ByteBufferReader.cpp $(SRCDIR)/DatabaseHandler.cpp $(SRCDIR)/ChatData.cpp
+			  $(SRCDIR)/UserData.cpp ../common/src/Payloads.cpp ../common/src/Packet.cpp ../common/src/NetworkHandler.cpp $(SRCDIR)/DatabaseHandler.cpp $(SRCDIR)/ChatData.cpp
 OBJS 		= $(SRCS:.c=.o)
 TARGET		= mc_server.out
 

@@ -6,7 +6,7 @@ CSocket::CSocket(char* server_ip)
 	this->serverIp = server_ip;
 }
 
-int CSocket::GetFd()
+int CSocket::GetFd() const
 {
 	return socketFd;
 }
@@ -40,7 +40,7 @@ void CSocket::TryConnect()
 	}
 }
 
-bool CSocket::IsConnected()
+bool CSocket::IsConnected() const
 {
 	return connected;
 }

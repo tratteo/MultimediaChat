@@ -21,7 +21,7 @@ void ClientHandler::CloseConnection()
     packet.Create(PAYLOAD_DISCONNECT);
     try
     {
-        Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
+        Send(&packet, sessionData->GetFd());
     }
     catch (std::exception e)
     {
@@ -71,11 +71,11 @@ void ClientHandler::Loop()
                     {
                         UserData* user = new UserData(credentials.username, credentials.password);
                         dataHandler->RegisterUser(user);
-                        sessionData->RegisterOwner(user);
+                        sessionData->UserLogged(user);
                         std::cout << user->GetUsername() << " has registered." << std::endl;
                         packet.Create(PAYLOAD_REGISTERED);
-                        Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
-                        sessionData->logged = true;
+                        Send(&packet, sessionData->GetFd());
+
                     }
                     else
                     {
@@ -86,16 +86,15 @@ void ClientHandler::Loop()
                             {
                                 packet.Create(PAYLOAD_LOGGED_IN);
                                 std::cout << credentials.username << " has logged in"<< std::endl;
-                                Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
-                                sessionData->logged = true;
-                                sessionData->RegisterOwner(data);
+                                Send(&packet, sessionData->GetFd());
+                                sessionData->UserLogged(data);
                                 //TODO logged in
                             }
                             else
                             {
                                 //TODO bad credentials
                                 packet.Create(PAYLOAD_INVALID_CREDENTIALS);
-                                Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
+                                Send(&packet, sessionData->GetFd());
                             }
                         }
                     }
@@ -104,7 +103,7 @@ void ClientHandler::Loop()
                 }
                 case PAYLOAD_MSG:
                 {
-                    if (sessionData->logged)
+                    if (sessionData->IsLogged())
                     {
                         Packet packet;
                         packet.FromByteBuf(buf);
@@ -116,20 +115,20 @@ void ClientHandler::Loop()
                             ClientSessionData* destData;
                             if ((destData = dataHandler->GetUserSession(message.to)) != nullptr)
                             {
-                                Write(packet.Serialize(), packet.GetTotalLength(), destData->GetFd());
+                                Send(&packet, destData->GetFd());
                                 std::cout << message.from << " whispers to " << message.to << ": " << message.message << std::endl;
                                 dataHandler->AddMessage(message);
                             }
                             else
                             {
                                 packet.Create(PAYLOAD_OFFLINE_USR);
-                                Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
+                                Send(&packet, sessionData->GetFd());
                             }
                         }
                         else
                         {
                             packet.Create(PAYLOAD_INEXISTENT_DEST);
-                            Write(packet.Serialize(), packet.GetTotalLength(), sessionData->GetFd());
+                            Send(&packet, sessionData->GetFd());
                         }
                     }
                     break;

@@ -14,15 +14,13 @@ class CSocket
 	int socketFd;
 	struct sockaddr_in servAddr;
 
-
 	public:
-
 	~CSocket();
 	CSocket(char* serverIp);
 	void Init(int type, int protocol);
-	int GetFd();
+	int GetFd() const;
 	void TryConnect();
-	bool IsConnected();
+	bool IsConnected() const;
 	
 };
 

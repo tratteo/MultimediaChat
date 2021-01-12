@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <list>
+#include <tuple>
 #include <algorithm>
 #include "../../common/Payloads.hpp"
 #include "../include/ChatData.hpp"

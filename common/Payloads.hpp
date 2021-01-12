@@ -23,8 +23,8 @@ struct MessagePayload
 
 	void Create(std::string from, std::string to, std::string message);
 	void Deserialize(char* payload);
-	char* Serialize();
-	std::string ToString();
+	char* Serialize() const;
+	std::string ToString() const;
 };
 
 struct CredentialsPayload
@@ -37,7 +37,7 @@ struct CredentialsPayload
 
 	void Create(std::string username, std::string password);
 	void Deserialize(char* payload);
-	char* Serialize();
-	std::string ToString();
+	char* Serialize() const;
+	std::string ToString() const;
 };
 

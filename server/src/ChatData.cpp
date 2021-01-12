@@ -9,6 +9,11 @@ ChatData::ChatData()
 {
 }
 
+std::tuple<std::string, std::string> ChatData::GetUsers()
+{
+    return std::make_tuple(firstUser, secondUser);
+}
+
 void ChatData::AddMessage(MessagePayload message)
 {
 	messages.push_back(message);
