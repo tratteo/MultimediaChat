@@ -96,8 +96,8 @@ int main(int argv, char** argc)
 				std::string line;
 				SoundRegistrer *registrer = new SoundRegistrer();
 				std::cout << "Press enter to stop the registration" << std::endl;
-				std::cout << "Registering..." << < std::endl;
-				registrer->Register([]() -> bool { std::cin.ignore(); });
+				std::cout << "Registering..." << std::endl;
+				registrer->Register([]() -> bool { std::cin.ignore(); return true; });
 				std::cout << "Lenght: " << strlen(registrer->GetBuffer());
 				delete registrer;
 				break;

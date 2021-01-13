@@ -66,7 +66,7 @@ void SoundRegistrer::Register(std::function<bool()> stopCondition)
         registerThread.join();
     }
 
-    registerThread = std::thread(&RegistrerLoop);
+    registerThread = std::thread(&SoundRegistrer::RegistrerLoop, this);
 
     while (!shouldStop)
     {
@@ -81,8 +81,8 @@ void SoundRegistrer::Register(std::function<bool()> stopCondition)
 
 void SoundRegistrer::RegistrerLoop()
 {
-    int fd = open(BUFFER_FILE, O_CREAT, S_IRWXU);
-    if (fd != 0)
+    int fd = open(BUFFER_FILE, O_CREAT | O_RDWR | O_TRUNC);
+    if (fd == -1)
     {
         std::cerr << "Error opening file for recording, skipping" << std::endl;
         return;
@@ -112,4 +112,15 @@ void SoundRegistrer::RegistrerLoop()
             fprintf(stderr, "short write: wrote %d bytes\n", rc);
         }
     }
+    close(fd);
+}
+
+int SoundRegistrer::Write(char* buffer, int len, int fd)
+{
+	int written = 0;
+	while (written < len)
+	{
+		written += write(fd, buffer + written, len - written);
+	}
+	return written;
 }

@@ -5,7 +5,16 @@ int Write(char* buffer, int len, int fd)
 	int written = 0;
 	while (written < len)
 	{
-		written += write(fd, buffer + written, len - written);
+		int res = write(fd, buffer + written, len - written);
+		if(res != -1)
+		{
+			written += res;
+		}
+		else
+		{
+			return -1;
+		}
+		
 	}
 	return written;
 }

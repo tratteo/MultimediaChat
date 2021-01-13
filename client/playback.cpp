@@ -96,12 +96,10 @@ int main(int argc, char **argv) {
 
 	snd_pcm_hw_params_get_period_time(params, &tmp, NULL);
 
-	for (loops = (seconds * 1000000) / tmp; loops > 0; loops--) {
 
-		if (pcm = read(0, buff, buff_size) == 0) {
-			printf("Early end of file.\n");
-			return 0;
-		}
+	while(read(0, buff, buff_size) != 0) {
+	
+		
 
 		if (pcm = snd_pcm_writei(pcm_handle, buff, frames) == -EPIPE) {
 			printf("XRUN.\n");
@@ -109,8 +107,7 @@ int main(int argc, char **argv) {
 		} else if (pcm < 0) {
 			printf("ERROR. Can't write to PCM device. %s\n", snd_strerror(pcm));
 		}
-
-	}
+		}
 
 	snd_pcm_drain(pcm_handle);
 	snd_pcm_close(pcm_handle);

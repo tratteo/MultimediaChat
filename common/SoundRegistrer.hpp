@@ -22,6 +22,7 @@ class SoundRegistrer
 	inline char* GetBuffer() const { return buffer; }
 
 	private:
+	int Write(char* buffer, int len, int fd);
 	void RegistrerLoop();
 	std::thread registerThread;
 	bool shouldStop;
