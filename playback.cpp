@@ -35,15 +35,10 @@ int main(int argc, char **argv) {
 	char *buff;
 	int buff_size, loops;
 
-	if (argc < 4) {
-		printf("Usage: %s <sample_rate> <channels> <seconds>\n",
-								argv[0]);
-		return -1;
-	}
 
-	rate 	 = atoi(argv[1]);
-	channels = atoi(argv[2]);
-	seconds  = atoi(argv[3]);
+	rate 	 = 44100;
+	channels = 2;
+	seconds  = 5;
 
 	/* Open the PCM device in playback mode */
 	if (pcm = snd_pcm_open(&pcm_handle, PCM_DEVICE,

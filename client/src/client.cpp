@@ -4,6 +4,7 @@
 #include <thread>
 #include <iostream>
 #include "../include/CSocket.hpp"
+#include "../../common/SoundRegistrer.hpp"
 #include "../../common/NetworkHandler.hpp"
 #include "../../common/Packet.hpp"
 #include "../../common/Payloads.hpp"
@@ -54,7 +55,7 @@ int main(int argv, char** argc)
 
 	while (true)
 	{
-		std::cout << "1. Write message" << std::endl << "0. Bye bye" << std::endl;
+		std::cout << "1. Write message\n2. Register\n0. Bye bye" << std::endl;
 		std::string buf;
 		int choice = 0;
 		std::getline(std::cin, buf);
@@ -88,6 +89,12 @@ int main(int argv, char** argc)
 				Packet packet;
 				packet.FromData(PAYLOAD_MSG, payload.Serialize(), payload.Size());
 				Send(&packet, clientSocket->GetFd());
+				break;
+			}
+			case 2:
+			{
+				SoundRegistrer *registrer = new SoundRegistrer();
+				delete registrer;
 				break;
 			}
 			case 0:
