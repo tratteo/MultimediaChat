@@ -19,14 +19,12 @@ class SoundRegistrer
 	~SoundRegistrer();
 	SoundRegistrer();
 	void Register(std::function<bool()> stopCondition);
-	inline char* GetBuffer() const { return buffer; }
 
 	private:
 	int Write(char* buffer, int len, int fd);
 	void RegistrerLoop();
 	std::thread registerThread;
 	bool shouldStop;
-	long loops;
 	int rc;
 	int size;
 	snd_pcm_t* handle;

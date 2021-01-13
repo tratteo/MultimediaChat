@@ -4,6 +4,8 @@
 #include <sys/socket.h> 
 #include <unistd.h> 
 #include <signal.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string>
 #include <list>
 #include "../include/UserData.hpp"
@@ -25,11 +27,14 @@ class ClientHandler
     void CloseConnection();
 
     private:
+    int udpFd;
+    struct sockaddr_in servaddr, cliaddr;
     ClientSessionData *sessionData;
     DataBaseHandler *dataHandler;
     bool shutdownReq = false;
     bool closedLocal = true;
     std::thread clientThread;
+    std::thread udpThread;
     void ( *OnDisconnect )(ClientHandler*);
     void Loop();
 };

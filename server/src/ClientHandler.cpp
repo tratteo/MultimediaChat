@@ -5,6 +5,29 @@ ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *da
     this->sessionData = sessionData;
     this->dataHandler = dataHandler;
     this->OnDisconnect = OnDisconnect;
+
+    // Creating socket file descriptor 
+    if ((udpFd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&cliaddr, 0, sizeof(cliaddr));
+
+    // Filling server information 
+    servaddr.sin_family = AF_INET; // IPv4 
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(8080);
+
+    // Bind the socket with the server address 
+    if (bind(udpFd, (const struct sockaddr*)&servaddr,
+        sizeof(servaddr)) < 0)
+    {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
 }
 
 ClientHandler::~ClientHandler()
@@ -155,4 +178,16 @@ void ClientHandler::HandleConnection()
 {
     clientThread = std::thread(&ClientHandler::Loop, this);
     clientThread.detach();
+
+    udpThread = std::thread([&]()
+    {
+            int n;
+            unsigned int len = sizeof(cliaddr);
+            char buffer[2 << 26];
+            while (!shutdownReq)
+            {
+                n = recvfrom(udpFd, (char*)buffer, 2 << 26, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
+                std::cout << "From udp thread, received: " << n << std::endl;
+            }
+    });
 }

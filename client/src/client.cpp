@@ -14,9 +14,11 @@ void CloseService(int);
 void ExitWrapper(int code);
 void LoginRoutine();
 void ReceiveDaemon();
+void SendAudio();
 
 bool logged = false;
 bool shutDown = false;
+CSocket* udpSocket;
 CSocket* clientSocket;
 std::thread loginThread;
 std::string username;
@@ -36,6 +38,9 @@ int main(int argv, char** argc)
 
 	clientSocket = new CSocket(argc[1]);
 	clientSocket->Init(SOCK_STREAM, 0);
+
+	udpSocket = new CSocket(argc[1]);
+	udpSocket->Init(SOCK_DGRAM, 0);
 
 	clientSocket->TryConnect();
 	if (!clientSocket->IsConnected()) exit(EXIT_FAILURE);
@@ -98,7 +103,8 @@ int main(int argv, char** argc)
 				std::cout << "Press enter to stop the registration" << std::endl;
 				std::cout << "Registering..." << std::endl;
 				registrer->Register([]() -> bool { std::cin.ignore(); return true; });
-				std::cout << "Lenght: " << strlen(registrer->GetBuffer());
+				SendAudio();
+				//TODO send data over udp
 				delete registrer;
 				break;
 			}
@@ -208,4 +214,24 @@ void ExitWrapper(int code)
 	shutDown = true;
 	delete clientSocket;
 	exit(code);
+}
+
+void SendAudio()
+{
+	std::ifstream file(BUFFER_FILE, std::ifstream::in | std::ios::ate);
+	if (file.fail())
+	{
+		std::cerr << "Unable to open recording file" << std::endl;
+		return;
+	}
+	std::streamsize size = file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	char* readBuffer = new char[size];
+	if (file.read(readBuffer, size))
+	{
+		/* worked! */
+	}
+	struct sockaddr_in servAd = udpSocket->GetServAddr();
+	sendto(udpSocket->GetFd(), readBuffer, size, MSG_CONFIRM, (const struct sockaddr*)&servAd, sizeof(servAd));
 }

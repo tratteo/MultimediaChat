@@ -18,6 +18,7 @@ class CSocket
 	~CSocket();
 	CSocket(char* serverIp);
 	void Init(int type, int protocol);
+	inline struct sockaddr_in GetServAddr() const { return servAddr; }
 	int GetFd() const;
 	void TryConnect();
 	bool IsConnected() const;

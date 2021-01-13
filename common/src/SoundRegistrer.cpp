@@ -50,7 +50,6 @@ SoundRegistrer::SoundRegistrer()
 
     /* We want to loop for 5 seconds */
     snd_pcm_hw_params_get_period_time(params, &val, &dir);
-    loops = 5000000 / val;
 }
 
 
@@ -81,8 +80,14 @@ void SoundRegistrer::Register(std::function<bool()> stopCondition)
 
 void SoundRegistrer::RegistrerLoop()
 {
-    int fd = open(BUFFER_FILE, O_CREAT | O_RDWR | O_TRUNC);
-    if (fd == -1)
+    //int fd = open(BUFFER_FILE, O_CREAT | O_RDWR | O_TRUNC);
+    //if (fd == -1)
+    //{
+    //    std::cerr << "Error opening file for recording, skipping" << std::endl;
+    //    return;
+    //}
+    std::ofstream outStream(BUFFER_FILE, std::ofstream::out | std::ofstream::trunc);
+    if (outStream.fail())
     {
         std::cerr << "Error opening file for recording, skipping" << std::endl;
         return;
@@ -93,7 +98,6 @@ void SoundRegistrer::RegistrerLoop()
         rc = snd_pcm_readi(handle, buffer, frames);
         if (rc == -EPIPE)
         {
-            /* EPIPE means overrun */
             fprintf(stderr, "overrun occurred\n");
             snd_pcm_prepare(handle);
         }
@@ -106,13 +110,9 @@ void SoundRegistrer::RegistrerLoop()
             fprintf(stderr, "short read, read %d frames\n", rc);
         }
 
-        rc = write(fd, buffer, size);
-        if (rc != size)
-        {
-            fprintf(stderr, "short write: wrote %d bytes\n", rc);
-        }
+        outStream << buffer;
     }
-    close(fd);
+    outStream.close();
 }
 
 int SoundRegistrer::Write(char* buffer, int len, int fd)
