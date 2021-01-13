@@ -14,11 +14,10 @@ class Packet
 	void FromData(char type, char* payload, int payloadLength);
 	void FromByteBuf(char* packetByteBuf);
 	void Create(char type);
-	// Getters
-	char GetType() const;
-	int GetLength() const;
-	int GetTotalLength() const;
-	char* GetData() const;
+	inline char GetType() const { return type; };
+	inline int GetLength() const { return length; };
+	inline int GetTotalLength() const { return length + sizeof(int) + 1; };
+	inline char* GetData() const { return data; };
 
 	private:
 	char type;

@@ -137,26 +137,26 @@ ClientSessionData* DataBaseHandler::GetUserSession(std::string username)
 void DataBaseHandler::AddMessage(MessagePayload message)
 {
     ChatData* chat;
-    ClientSessionData* fromSes = GetUserSession(message.from);
+    ClientSessionData* fromSes = GetUserSession(message.From());
     if (fromSes != nullptr)
     {
-        chat = fromSes->GetOwner()->GetChatWith(message.to);
+        chat = fromSes->GetOwner()->GetChatWith(message.To());
         if (chat == nullptr)
         {   
-            chat = new ChatData(message.from, message.to);
+            chat = new ChatData(message.From(), message.To());
             fromSes->GetOwner()->AddChat(chat);
             //std::cout << "Adding chat" << std::endl;
         }
         //std::cout << "Adding msg: " << message.ToString() << "to  user: " << fromSes->GetOwner()->GetUsername() << std::endl;
         chat->AddMessage(message);
     }
-    ClientSessionData* toSes = GetUserSession(message.to);
+    ClientSessionData* toSes = GetUserSession(message.To());
     if (toSes != nullptr)
     {
-        chat = toSes->GetOwner()->GetChatWith(message.from);
+        chat = toSes->GetOwner()->GetChatWith(message.From());
         if (chat == nullptr)
         {
-            chat = new ChatData(message.to, message.from);
+            chat = new ChatData(message.To(), message.From());
             toSes->GetOwner()->AddChat(chat);
             //std::cout << "Adding chat" << std::endl;
         }

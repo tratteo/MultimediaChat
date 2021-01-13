@@ -9,10 +9,9 @@ class ChatData
     public:
     ChatData();
     ChatData(std::string firstUser, std::string secondUser);
-    std::tuple<std::string, std::string> GetUsers();
     void AddMessage(MessagePayload message);
-    std::string ToString(std::string owner);
-
+    std::string ToString(std::string owner) const;
+    inline std::tuple<std::string, std::string> GetUsers() const { return std::make_tuple(firstUser, secondUser); };
     private:
     std::string secondUser;
     std::string firstUser;

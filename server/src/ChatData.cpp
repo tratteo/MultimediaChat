@@ -9,17 +9,12 @@ ChatData::ChatData()
 {
 }
 
-std::tuple<std::string, std::string> ChatData::GetUsers()
-{
-    return std::make_tuple(firstUser, secondUser);
-}
-
 void ChatData::AddMessage(MessagePayload message)
 {
 	messages.push_back(message);
 }
 
-std::string ChatData::ToString(std::string owner)
+std::string ChatData::ToString(std::string owner) const
 {
     std::string subject = owner == firstUser ? secondUser : firstUser;
     std::string res = "Chat:" + subject + "\n";

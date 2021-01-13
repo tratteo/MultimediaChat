@@ -23,8 +23,8 @@ class UserData
 
     std::string ToString() const;
     ChatData* GetChatWith(std::string username);
-    std::list<ChatData*> GetChats() const;
-    std::string GetUsername() const;
-    std::string GetPassword() const;
+    inline std::list<ChatData*> GetChats() const { return chats; };
+    inline std::string GetUsername() const { return this->username; };
+    inline std::string GetPassword() const { return this->password; };
 
 };

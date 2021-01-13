@@ -12,11 +12,6 @@ ClientSessionData::ClientSessionData(int fd, char* ip)
     this->owner = nullptr;
 }
 
-bool ClientSessionData::IsLogged() const
-{
-    return logged;
-}
-
 void ClientSessionData::UserLogged(UserData* owner)
 {
     if (this->owner != nullptr)
@@ -27,18 +22,3 @@ void ClientSessionData::UserLogged(UserData* owner)
     this->owner = owner;
     logged = true;
 }   
-
-UserData* ClientSessionData::GetOwner() const
-{
-    return this->owner;
-}
-
-int ClientSessionData::GetFd() const
-{
-    return this->fd;
-}
-
-char* ClientSessionData::GetIp() const
-{
-    return this->ip;
-}

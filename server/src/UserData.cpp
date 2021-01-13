@@ -16,11 +16,6 @@ void UserData::AddChat(ChatData* chat)
     chats.push_back(chat);
 }
 
-std::list<ChatData*> UserData::GetChats() const
-{
-    return chats;
-}
-
 ChatData* UserData::GetChatWith(std::string username)
 {
     std::list<ChatData*>::iterator it = std::find_if(chats.begin(), chats.end(), [&](ChatData* data) 
@@ -39,15 +34,6 @@ ChatData* UserData::GetChatWith(std::string username)
     }
 }
 
-std::string UserData::GetUsername() const
-{
-    return this->username;
-}
-
-std::string UserData::GetPassword() const
-{
-    return this->password;
-}
 
 std::string UserData::ToString() const
 {

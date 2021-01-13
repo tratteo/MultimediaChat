@@ -67,9 +67,9 @@ void ClientHandler::Loop()
                     CredentialsPayload credentials;
                     packet.FromByteBuf(buf);
                     credentials.Deserialize(packet.GetData());
-                    if (!dataHandler->IsUserRegistered(credentials.username))
+                    if (!dataHandler->IsUserRegistered(credentials.Username()))
                     {
-                        UserData* user = new UserData(credentials.username, credentials.password);
+                        UserData* user = new UserData(credentials.Username(), credentials.Password());
                         dataHandler->RegisterUser(user);
                         sessionData->UserLogged(user);
                         std::cout << user->GetUsername() << " has registered." << std::endl;
@@ -79,13 +79,13 @@ void ClientHandler::Loop()
                     }
                     else
                     {
-                        UserData* data = dataHandler->GetRegisteredUser(credentials.username);
+                        UserData* data = dataHandler->GetRegisteredUser(credentials.Username());
                         if (data != nullptr)
                         {
-                            if (data->GetPassword() == credentials.password)
+                            if (data->GetPassword() == credentials.Password())
                             {
                                 packet.Create(PAYLOAD_LOGGED_IN);
-                                std::cout << credentials.username << " has logged in"<< std::endl;
+                                std::cout << credentials.Username() << " has logged in"<< std::endl;
                                 Send(&packet, sessionData->GetFd());
                                 sessionData->UserLogged(data);
                                 //TODO logged in
@@ -110,13 +110,13 @@ void ClientHandler::Loop()
                         MessagePayload message;
                         message.Deserialize(packet.GetData());
 
-                        if(dataHandler->IsUserRegistered(message.to))
+                        if(dataHandler->IsUserRegistered(message.To()))
                         {
                             ClientSessionData* destData;
-                            if ((destData = dataHandler->GetUserSession(message.to)) != nullptr)
+                            if ((destData = dataHandler->GetUserSession(message.To())) != nullptr)
                             {
                                 Send(&packet, destData->GetFd());
-                                std::cout << message.from << " whispers to " << message.to << ": " << message.message << std::endl;
+                                std::cout << message.From() << " whispers to " << message.To() << ": " << message.Message() << std::endl;
                                 dataHandler->AddMessage(message);
                             }
                             else

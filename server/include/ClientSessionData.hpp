@@ -6,11 +6,11 @@ class ClientSessionData
     public:
     ~ClientSessionData();
     ClientSessionData(int fd, char* ip);
-    int GetFd() const;
-    char* GetIp() const;
-    UserData* GetOwner() const;
-    bool IsLogged() const;
     void UserLogged(UserData* owner);
+    inline int GetFd() const { return this->fd; };
+    inline char* GetIp() const { return this->ip; };
+    inline UserData* GetOwner() const { return this->owner; };
+    inline bool IsLogged() const { return logged; };
 
     private:
     bool logged;

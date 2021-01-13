@@ -63,12 +63,3 @@ void Packet::Create(char type)
 	data = nullptr;
 	length = 0;
 }
-
-// Getters
-char Packet::GetType() const { return type; }
-
-int Packet::GetLength() const { return length; }
-
-int Packet::GetTotalLength() const { return length + 5; }
-
-char* Packet::GetData() const { return data; }

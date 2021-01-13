@@ -1,5 +1,58 @@
 #include "../Payloads.hpp"
 
+Payload::Payload(int size)
+{
+	this->size = size;
+}
+
+Payload::Payload()
+{
+
+}
+
+void Payload::Create(int size)
+{
+	this->size = size;
+}
+
+void Payload::PutString(char* startAddress, std::string value) const
+{
+	int len = value.size();
+	for (int i = 0; i < len; i++)
+	{
+		startAddress[i] = value.at(i);
+	}
+}
+
+void Payload::PutInt(char* startAddress, int value) const
+{
+	int size = sizeof(int);
+	for (int i = 0; i < size; i++)
+	{
+		startAddress[i] = (char)(value >> (sizeof(char) * (i - 1)));
+	}
+}
+
+int Payload::ReadInt(char* currentAddress) const
+{
+	int res = 0x0;
+	int size = sizeof(int);
+	for (int i = 0; i < size; i++)
+	{
+		res |= (currentAddress[i] << (sizeof(char) * (i - 1)));
+	}
+	return res;
+}
+
+std::string Payload::ReadString(char* currentAddress, int length) const
+{
+	std::string res = "";
+	for (int i = 0; i < length; i++)
+	{
+		res += currentAddress[i];
+	}
+	return res;
+}
 
 void MessagePayload::Create(std::string from, std::string to, std::string message)
 {
@@ -9,81 +62,56 @@ void MessagePayload::Create(std::string from, std::string to, std::string messag
 	this->fromLen = from.length();
 	this->toLen = to.length();
 	this->messageLen = message.length();
-	this->size = fromLen + toLen + messageLen + 12;
+	Payload::Create(fromLen + toLen + messageLen + 3 * sizeof(int));
 }
 
 void MessagePayload::Deserialize(char* payload)
 {
-	fromLen = 0x0;
-	toLen = 0x0;
-	messageLen = 0x0;
-
 	int offset = 0;
-	for (int i = 0; i < 4; i++)
-	{
-		fromLen |= (payload[offset++] << (8 * (i - 1)));
-	}
+	fromLen = ReadInt(payload + offset);
+	offset += sizeof(int);
 
-	for (int i = 0; i < 4; i++)
-	{
-		toLen |= (payload[offset++] << (8 * (i - 1)));
-	}
+	toLen = ReadInt(payload + offset);
+	offset += sizeof(int);
 
-	for (int i = 0; i < 4; i++)
-	{
-		messageLen |= (payload[offset++] << (8 * (i - 1)));
-	}
+	messageLen = ReadInt(payload + offset);
+	offset += sizeof(int);
 
-	from = "";
-	to = "";
-	message = "";
+	from = ReadString(payload + offset, fromLen);
+	offset += fromLen;
 
-	for (int i = 0; i < fromLen; i++)
-	{
-		from += payload[offset++];
-	}
+	to = ReadString(payload + offset, toLen);
+	offset += toLen;
 
-	for (int i = 0; i < toLen; i++)
-	{
-		to += payload[offset++];
-	}
+	message = ReadString(payload + offset, messageLen);
+	offset += messageLen;
 
-	for (int i = 0; i < messageLen; i++)
-	{
-		message += payload[offset++];
-	}
-
-	size = fromLen + toLen + messageLen + 12;
+	Payload::Create(offset);
 }
 
 char* MessagePayload::Serialize() const
 {
 	char* buffer = new char[size];
+
 	int offset = 0;
-	for (int i = 0; i < 4; i++)
-	{
-		buffer[offset++] = (char)(fromLen >> (8 * (i - 1)));
-	}
-	for (int i = 0; i < 4; i++)
-	{
-		buffer[offset++] = (char)(toLen >> (8 * (i - 1)));
-	}
-	for (int i = 0; i < 4; i++)
-	{
-		buffer[offset++] = (char)(messageLen >> (8 * (i - 1)));
-	}
-	for (int i = 0; i < fromLen; i++)
-	{
-		buffer[offset++] = from.at(i);
-	}
-	for (int i = 0; i < toLen; i++)
-	{
-		buffer[offset++] = to.at(i);
-	}
-	for (int i = 0; i < messageLen; i++)
-	{
-		buffer[offset++] = message.at(i);
-	}
+
+	PutInt(buffer + offset, fromLen);
+	offset += sizeof(int);
+
+	PutInt(buffer + offset, toLen);
+	offset += sizeof(int);
+
+	PutInt(buffer + offset, messageLen);
+	offset += sizeof(int);
+
+	PutString(buffer + offset, from);
+	offset += fromLen;
+
+	PutString(buffer + offset, to);
+	offset += toLen;
+
+	PutString(buffer + offset, message);
+	offset += messageLen;
 
 	return buffer;
 }
@@ -100,60 +128,43 @@ void CredentialsPayload::Create(std::string username, std::string password)
 	this->password = password;
 	this->usernameLen = username.length();
 	this->passwordLen = password.length();
-	this->size = usernameLen + passwordLen + 8;
+	Payload::Create(usernameLen + passwordLen + 2 * sizeof(int));
 }
 
 void CredentialsPayload::Deserialize(char* payload)
 {
-	usernameLen = 0x0;
-	passwordLen = 0x0;
-
 	int offset = 0;
-	for (int i = 0; i < 4; i++)
-	{
-		usernameLen |= (payload[offset++] << (8 * (i - 1)));
-	}
+	usernameLen = ReadInt(payload + offset);
+	offset += sizeof(int);
 
-	for (int i = 0; i < 4; i++)
-	{
-		passwordLen |= (payload[offset++] << (8 * (i - 1)));
-	}
+	passwordLen = ReadInt(payload + offset);
+	offset += sizeof(int);
 
-	username = "";
-	password = "";
+	username = ReadString(payload + offset, usernameLen);
+	offset += usernameLen;
 
-	for (int i = 0; i < usernameLen; i++)
-	{
-		username += payload[offset++];
-	}
-	for (int i = 0; i < passwordLen; i++)
-	{
-		password += payload[offset++];
-	}
+	password = ReadString(payload + offset, passwordLen);
+	offset += passwordLen;
 
-	size = usernameLen + passwordLen + 8;
+	Payload::Create(offset);
 }
 
 char* CredentialsPayload::Serialize() const
 {
 	char* buffer = new char[size];
 	int offset = 0;
-	for (int i = 0; i < 4; i++)
-	{
-		buffer[offset++] = (char)(usernameLen >> (8 * (i - 1)));
-	}
-	for (int i = 4; i < 8; i++)
-	{
-		buffer[offset++] = (char)(passwordLen >> (8 * (i - 1)));
-	}
-	for (int i = 0; i < usernameLen; i++)
-	{
-		buffer[offset++] = username.at(i);
-	}
-	for (int i = 0; i < passwordLen; i++)
-	{
-		buffer[offset++] = password.at(i);
-	}
+
+	PutInt(buffer + offset, usernameLen);
+	offset += sizeof(int);
+
+	PutInt(buffer + offset, passwordLen);
+	offset += sizeof(int);
+
+	PutString(buffer + offset, username);
+	offset += usernameLen;
+
+	PutString(buffer + offset, password);
+	offset += passwordLen;
 
 	return buffer;
 }

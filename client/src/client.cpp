@@ -86,7 +86,7 @@ int main(int argv, char** argc)
 				payload.Create(username, dest, message);
 				//std::cout << "F: " << payload.from << ",l: "<<payload.fromLen<< ", T: " << payload.to <<", l: "<<payload.toLen<< ", M: " << ", l: "<<payload.messageLen<< payload.message << std::endl;
 				Packet packet;
-				packet.FromData(PAYLOAD_MSG, payload.Serialize(), payload.size);
+				packet.FromData(PAYLOAD_MSG, payload.Serialize(), payload.Size());
 				Send(&packet, clientSocket->GetFd());
 				break;
 			}
@@ -155,7 +155,7 @@ void ReceiveDaemon()
 					packet.FromByteBuf(buf);
 					MessagePayload message;
 					message.Deserialize(packet.GetData());
-					std::cout << message.from << " whispers to you: " << message.message << std::endl;
+					std::cout << message.From() << " whispers to you: " << message.Message() << std::endl;
 					break;
 				}
 				case PAYLOAD_INEXISTENT_DEST:
@@ -186,7 +186,7 @@ void LoginRoutine()
 	credentials.Create(username, password);
 	
 	Packet packet;
-	packet.FromData(PAYLOAD_CREDENTIALS, credentials.Serialize(), credentials.size);
+	packet.FromData(PAYLOAD_CREDENTIALS, credentials.Serialize(), credentials.Size());
 
 	Send(&packet, clientSocket->GetFd());
 }
