@@ -59,7 +59,27 @@ SoundRegistrer::~SoundRegistrer()
     delete buffer;
 }
 
-void SoundRegistrer::Register()
+void SoundRegistrer::Register(std::function<bool()> stopCondition)
+{
+    if (registerThread.joinable())
+    {
+        registerThread.join();
+    }
+
+    registerThread = std::thread(&RegistrerLoop);
+
+    while (!shouldStop)
+    {
+        if (stopCondition())
+        {
+            shouldStop = true;
+            continue;
+        }
+    }
+    registerThread.join();
+}
+
+void SoundRegistrer::RegistrerLoop()
 {
     int fd = open(BUFFER_FILE, O_CREAT, S_IRWXU);
     if (fd != 0)
@@ -68,34 +88,28 @@ void SoundRegistrer::Register()
         return;
     }
 
-    while (loops > 0) 
+    while (!shouldStop)
     {
-        loops--;
         rc = snd_pcm_readi(handle, buffer, frames);
-        if (rc == -EPIPE) 
+        if (rc == -EPIPE)
         {
             /* EPIPE means overrun */
             fprintf(stderr, "overrun occurred\n");
             snd_pcm_prepare(handle);
         }
-        else if (rc < 0) 
+        else if (rc < 0)
         {
             fprintf(stderr, "error from read: %s\n", snd_strerror(rc));
         }
-        else if (rc != (int)frames) 
+        else if (rc != (int)frames)
         {
             fprintf(stderr, "short read, read %d frames\n", rc);
         }
-       
+
         rc = write(fd, buffer, size);
         if (rc != size)
         {
             fprintf(stderr, "short write: wrote %d bytes\n", rc);
         }
     }
-}
-
-void SoundRegistrer::StopRegistring()
-{
-
 }

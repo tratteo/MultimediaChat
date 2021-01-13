@@ -17,15 +17,18 @@ void ClientHandler::CloseConnection()
 {
     shutdownReq = true;
     
-    Packet packet;
-    packet.Create(PAYLOAD_DISCONNECT);
-    try
+    if (closedLocal)
     {
-        Send(&packet, sessionData->GetFd());
-    }
-    catch (std::exception e)
-    {
+        Packet packet;
+        packet.Create(PAYLOAD_DISCONNECT);
+        try
+        {
+            Send(&packet, sessionData->GetFd());
+        }
+        catch (std::exception e)
+        {
 
+        }
     }
 
     if(close(sessionData->GetFd()) < 0)
@@ -58,6 +61,7 @@ void ClientHandler::Loop()
             {
                 case PAYLOAD_DISCONNECT:
                 {
+                    closedLocal = false;
                     delete this;
                     break;
                 }

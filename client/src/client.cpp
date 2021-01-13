@@ -93,7 +93,12 @@ int main(int argv, char** argc)
 			}
 			case 2:
 			{
+				std::string line;
 				SoundRegistrer *registrer = new SoundRegistrer();
+				std::cout << "Press enter to stop the registration" << std::endl;
+				std::cout << "Registering..." << < std::endl;
+				registrer->Register([]() -> bool { std::cin.ignore(); });
+				std::cout << "Lenght: " << strlen(registrer->GetBuffer());
 				delete registrer;
 				break;
 			}

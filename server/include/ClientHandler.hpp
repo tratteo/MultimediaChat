@@ -28,6 +28,7 @@ class ClientHandler
     ClientSessionData *sessionData;
     DataBaseHandler *dataHandler;
     bool shutdownReq = false;
+    bool closedLocal = true;
     std::thread clientThread;
     void ( *OnDisconnect )(ClientHandler*);
     void Loop();

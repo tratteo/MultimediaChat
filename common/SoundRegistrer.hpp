@@ -2,6 +2,8 @@
 #include <alsa/asoundlib.h>
 #include <iostream>
 #include <fstream>
+#include <thread>
+#include <functional>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -16,11 +18,12 @@ class SoundRegistrer
 	public:
 	~SoundRegistrer();
 	SoundRegistrer();
-	void Register();
-	void StopRegistring();
+	void Register(std::function<bool()> stopCondition);
 	inline char* GetBuffer() const { return buffer; }
 
 	private:
+	void RegistrerLoop();
+	std::thread registerThread;
 	bool shouldStop;
 	long loops;
 	int rc;

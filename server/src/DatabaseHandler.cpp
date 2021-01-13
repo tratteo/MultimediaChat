@@ -110,7 +110,7 @@ void DataBaseHandler::UserDisconnected(ClientSessionData* data)
 
 UserData* DataBaseHandler::GetRegisteredUser(std::string username)
 {
-    const std::list<UserData*>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&] (UserData* data) { return username == data->GetUsername(); });
+    const std::list<UserData*>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&] (UserData* data) -> bool { return username == data->GetUsername(); });
     if (it != registeredUsers.end())
     {
         return *it;
@@ -123,7 +123,7 @@ UserData* DataBaseHandler::GetRegisteredUser(std::string username)
 
 ClientSessionData* DataBaseHandler::GetUserSession(std::string username)
 {
-    std::list<ClientSessionData*>::iterator it = std::find_if(connectedUsers.begin(), connectedUsers.end(), [&] (ClientSessionData* data) {return username == data->GetOwner()->GetUsername(); });
+    std::list<ClientSessionData*>::iterator it = std::find_if(connectedUsers.begin(), connectedUsers.end(), [&] (ClientSessionData* data) -> bool {return username == data->GetOwner()->GetUsername(); });
     if (it != connectedUsers.end())
     {
         return *it;
