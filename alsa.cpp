@@ -1,125 +1,108 @@
 /*
-  A Minimal Capture Program
-  This program opens an audio interface for capture, configures it for
-  stereo, 16 bit, 44.1kHz, interleaved conventional read/write
-  access. Then its reads a chunk of random data from it, and exits. It
-  isn't meant to be a real program.
-  From on Paul David's tutorial : http://equalarea.com/paul/alsa-audio.html
-  Fixes rate and buffer problems
-  sudo apt-get install libasound2-dev
-  gcc -o alsa-record-example -lasound alsa-record-example.c && ./alsa-record-example hw:0
+
+This example reads from the default PCM device
+and writes to standard output for 5 seconds of data.
+
 */
 
-#include <stdio.h>
-#include <stdlib.h>
+/* Use the newer ALSA API */
+#define ALSA_PCM_NEW_HW_PARAMS_API
+
 #include <alsa/asoundlib.h>
 
-int main(int argc, char* argv[])
-{
-    int i;
-    int err;
-    char* buffer;
-    int buffer_frames = 128;
-    unsigned int rate = 44100;
-    snd_pcm_t* capture_handle;
-    snd_pcm_hw_params_t* hw_params;
-    snd_pcm_format_t format = SND_PCM_FORMAT_S16_LE;
+int main() {
+  long loops;
+  int rc;
+  int size;
+  snd_pcm_t *handle;
+  snd_pcm_hw_params_t *params;
+  unsigned int val;
+  int dir;
+  snd_pcm_uframes_t frames;
+  char *buffer;
 
-    if ((err = snd_pcm_open(&capture_handle, argv[1], SND_PCM_STREAM_CAPTURE, 0)) < 0) {
-        fprintf(stderr, "cannot open audio device %s (%s)\n",
-            argv[1],
-            snd_strerror(err));
-        exit(1);
+  /* Open PCM device for recording (capture). */
+  rc = snd_pcm_open(&handle, "default",
+                    SND_PCM_STREAM_CAPTURE, 0);
+  if (rc < 0) {
+    fprintf(stderr,
+            "unable to open pcm device: %s\n",
+            snd_strerror(rc));
+    exit(1);
+  }
+
+  /* Allocate a hardware parameters object. */
+  snd_pcm_hw_params_alloca(&params);
+
+  /* Fill it in with default values. */
+  snd_pcm_hw_params_any(handle, params);
+
+  /* Set the desired hardware parameters. */
+
+  /* Interleaved mode */
+  snd_pcm_hw_params_set_access(handle, params,
+                      SND_PCM_ACCESS_RW_INTERLEAVED);
+
+  /* Signed 16-bit little-endian format */
+  snd_pcm_hw_params_set_format(handle, params,
+                              SND_PCM_FORMAT_S16_LE);
+
+  /* Two channels (stereo) */
+  snd_pcm_hw_params_set_channels(handle, params, 2);
+
+  /* 44100 bits/second sampling rate (CD quality) */
+  val = 44100;
+  snd_pcm_hw_params_set_rate_near(handle, params,
+                                  &val, &dir);
+
+  /* Set period size to 32 frames. */
+  frames = 32;
+  snd_pcm_hw_params_set_period_size_near(handle,
+                              params, &frames, &dir);
+
+  /* Write the parameters to the driver */
+  rc = snd_pcm_hw_params(handle, params);
+  if (rc < 0) {
+    fprintf(stderr,
+            "unable to set hw parameters: %s\n",
+            snd_strerror(rc));
+    exit(1);
+  }
+
+  /* Use a buffer large enough to hold one period */
+  snd_pcm_hw_params_get_period_size(params,
+                                      &frames, &dir);
+  size = frames * 4; /* 2 bytes/sample, 2 channels */
+  buffer = (char *) malloc(size);
+
+  /* We want to loop for 5 seconds */
+  snd_pcm_hw_params_get_period_time(params,
+                                         &val, &dir);
+  loops = 5000000 / val;
+
+  while (loops > 0) {
+    loops--;
+    rc = snd_pcm_readi(handle, buffer, frames);
+    if (rc == -EPIPE) {
+      /* EPIPE means overrun */
+      fprintf(stderr, "overrun occurred\n");
+      snd_pcm_prepare(handle);
+    } else if (rc < 0) {
+      fprintf(stderr,
+              "error from read: %s\n",
+              snd_strerror(rc));
+    } else if (rc != (int)frames) {
+      fprintf(stderr, "short read, read %d frames\n", rc);
     }
+    rc = write(1, buffer, size);
+    if (rc != size)
+      fprintf(stderr,
+              "short write: wrote %d bytes\n", rc);
+  }
 
-    fprintf(stdout, "audio interface opened\n");
+  snd_pcm_drain(handle);
+  snd_pcm_close(handle);
+  free(buffer);
 
-    if ((err = snd_pcm_hw_params_malloc(&hw_params)) < 0) {
-        fprintf(stderr, "cannot allocate hardware parameter structure (%s)\n",
-            snd_strerror(err));
-        exit(1);
-    }
-
-    fprintf(stdout, "hw_params allocated\n");
-
-    if ((err = snd_pcm_hw_params_any(capture_handle, hw_params)) < 0) {
-        fprintf(stderr, "cannot initialize hardware parameter structure (%s)\n",
-            snd_strerror(err));
-        exit(1);
-    }
-
-    fprintf(stdout, "hw_params initialized\n");
-
-    if ((err = snd_pcm_hw_params_set_access(capture_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
-        fprintf(stderr, "cannot set access type (%s)\n",
-            snd_strerror(err));
-        exit(1);
-    }
-
-    fprintf(stdout, "hw_params access setted\n");
-
-    if ((err = snd_pcm_hw_params_set_format(capture_handle, hw_params, format)) < 0) {
-        fprintf(stderr, "cannot set sample format (%s)\n",
-            snd_strerror(err));
-        exit(1);
-    }
-
-    fprintf(stdout, "hw_params format setted\n");
-
-    if ((err = snd_pcm_hw_params_set_rate_near(capture_handle, hw_params, &rate, 0)) < 0) {
-        fprintf(stderr, "cannot set sample rate (%s)\n",
-            snd_strerror(err));
-        exit(1);
-    }
-
-    fprintf(stdout, "hw_params rate setted\n");
-
-    if ((err = snd_pcm_hw_params_set_channels(capture_handle, hw_params, 2)) < 0) {
-        fprintf(stderr, "cannot set channel count (%s)\n",
-            snd_strerror(err));
-        exit(1);
-    }
-
-    fprintf(stdout, "hw_params channels setted\n");
-
-    if ((err = snd_pcm_hw_params(capture_handle, hw_params)) < 0) {
-        fprintf(stderr, "cannot set parameters (%s)\n",
-            snd_strerror(err));
-        exit(1);
-    }
-
-    fprintf(stdout, "hw_params setted\n");
-
-    snd_pcm_hw_params_free(hw_params);
-
-    fprintf(stdout, "hw_params freed\n");
-
-    if ((err = snd_pcm_prepare(capture_handle)) < 0) {
-        fprintf(stderr, "cannot prepare audio interface for use (%s)\n",
-            snd_strerror(err));
-        exit(1);
-    }
-
-    fprintf(stdout, "audio interface prepared\n");
-
-    buffer = (char*)malloc(128 * snd_pcm_format_width(format) / 8 * 2);
-
-    fprintf(stdout, "buffer allocated\n");
-
-    for (i = 0; i < 10; ++i) {
-        if ((err = snd_pcm_readi(capture_handle, buffer, buffer_frames)) != buffer_frames) {
-            fprintf(stderr, "read from audio interface failed (%s)\n", snd_strerror(err));
-            exit(1);
-        }
-        fprintf(stdout, "read %d done\n", i);
-    }
-
-    free(buffer);
-
-    fprintf(stdout, "buffer freed\n");
-
-    snd_pcm_close(capture_handle);
-    fprintf(stdout, "audio interface closed\n");
-
-    exit(0);
+  return 0;
 }
