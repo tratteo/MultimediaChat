@@ -24,11 +24,11 @@ UDPSocket::UDPSocket(char* ip, int port, Type type)
 	{
 		case UDPSocket::IN:
 		{
-			int opt = 1;
+			/*int opt = 1;
 			if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
 			{
 				handle_fatal_error("Unable to setsockopt");
-			}
+			}*/
 			servAddr.sin_addr.s_addr = INADDR_ANY;
 			if (bind(fd, (const struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
 			{
