@@ -69,18 +69,25 @@ void SoundPlayer::Init()
 	snd_pcm_hw_params_get_period_time(params, &tmp, NULL);
 }
 
-void SoundPlayer::PlaySound(int fd)
+void SoundPlayer::PlaySound()
 {
-	while (read(fd, buff, buff_size) != 0)
+	std::ifstream in(BUFFER_FILE, std::ifstream::in);
+
+	while (!in.eof())
 	{
+		in.read(buff, buff_size);
+
 		if (pcm = snd_pcm_writei(pcm_handle, buff, frames) == -EPIPE) 
 		{
 			printf("XRUN.\n");
 			snd_pcm_prepare(pcm_handle);
 		}
-		else if (pcm < 0) {
+		else if (pcm < 0) 
+		{
 			printf("ERROR. Can't write to PCM device. %s\n", snd_strerror(pcm));
 		}
+		if (in.eof()) break;
 	}
+	in.close();
 	snd_pcm_drain(pcm_handle);
 }

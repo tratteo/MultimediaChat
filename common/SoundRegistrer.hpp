@@ -1,17 +1,12 @@
-
-#include <alsa/asoundlib.h>
+#pragma once
 #include <iostream>
 #include <fstream>
 #include <thread>
 #include <functional>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "Sound.hpp"
 
-#define ALSA_PCM_NEW_HW_PARAMS_API
-#define PCM_DEVICE "default"
-#define CHANNELS 2
-#define SAMPLE_RATE 1024
-#define BUFFER_FILE "recording.data"
 
 class SoundRegistrer
 {
@@ -21,7 +16,6 @@ class SoundRegistrer
 	void Register(std::function<bool()> stopCondition);
 
 	private:
-	int Write(char* buffer, int len, int fd);
 	void RegistrerLoop();
 	std::thread registerThread;
 	bool shouldStop;

@@ -1,28 +1,25 @@
 #include <iostream>
 #include <unistd.h>
 #include <list>
-#include "../include/SSocket.hpp"
 #include "../include/ClientHandler.hpp"
 #include "../include/Serializer.hpp"
-#include "../include/UserData.hpp"
+#include "../../common/UserData.hpp"
+#include "../../common/CSocket.hpp"
 #include "../include/DatabaseHandler.hpp"
 
 void CloseService(int);
 void OnHandlerDisconnect(ClientHandler* handler);
 DataBaseHandler* dataHandler;
-SSocket* serverSocket;
+CSocket* servSocket;
 std::list<ClientHandler*> handlers;
 
 int main()
 {
-    serverSocket = new SSocket();
-    std::cout << "Initializing server..." << std::endl;
-    serverSocket->Init(SOCK_STREAM, 0);
+    servSocket = new CSocket(8080);
 
 	signal(SIGINT, CloseService);
 	signal(SIGKILL, CloseService);
 	signal(SIGTERM, CloseService);
-
 
     dataHandler = new DataBaseHandler();
 
@@ -30,7 +27,7 @@ int main()
     while(true)
     {
         ClientSessionData *data; 
-        if((data=serverSocket->AcceptConnection()) != nullptr)
+        if((data=servSocket->AcceptConnection()) != nullptr)
         {
             std::cout << "New connection accepted, handling..." << std::endl;
             ClientHandler *handler = new ClientHandler(data, dataHandler, OnHandlerDisconnect);
@@ -48,7 +45,7 @@ void OnHandlerDisconnect(ClientHandler* handler)
 
 void CloseService(int signal)
 {
-    delete serverSocket;
+    delete servSocket;
     delete dataHandler;
     for (auto& h : handlers)
     {

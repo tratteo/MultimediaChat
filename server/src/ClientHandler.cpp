@@ -6,38 +6,11 @@ ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *da
     this->dataHandler = dataHandler;
     this->OnDisconnect = OnDisconnect;
 
-    // Creating socket file descriptor 
-    if ((udpFd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        perror("socket creation failed");
-        exit(EXIT_FAILURE);
-    }
-
-    memset(&servaddr, 0, sizeof(servaddr));
-    memset(&cliaddr, 0, sizeof(cliaddr));
-
-    int opt = 1;
-    if (setsockopt(udpFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) 
-    { 
-        handle_fatal_error("Unable to setsockopt");
-    } 
-
-    // Filling server information 
-    servaddr.sin_family = AF_INET; // IPv4 
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(5150);
-
-    // Bind the socket with the server address 
-    if (bind(udpFd, (const struct sockaddr*)&servaddr,
-        sizeof(servaddr)) < 0)
-    {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
-
 }
 
 ClientHandler::~ClientHandler()
 {
+    std::cout << "Handler ~" << std::endl;
     CloseConnection();
     delete sessionData;
 }
@@ -48,8 +21,9 @@ void ClientHandler::CloseConnection()
     
     if (closedLocal)
     {
+        std::cout << "Closed local" << std::endl;
         Packet packet;
-        packet.Create(PAYLOAD_DISCONNECT);
+        packet.CreateTrivial(PAYLOAD_DISCONNECT);
         try
         {
             Send(&packet, sessionData->GetFd());
@@ -59,37 +33,20 @@ void ClientHandler::CloseConnection()
 
         }
     }
-
-    if(close(sessionData->GetFd()) < 0)
-    {
-        handle_error("Unable to close client descriptor");
-    }
-
-    if(close(udpFd) < 0)
-    {
-        handle_error("Unable to close client udp descriptor");
-    }
-
+    std::cout << "Before owner" << std::endl;
     if (sessionData->GetOwner() != nullptr)
     {
+        std::cerr << "Connected" << std::endl;
         std::cout << "User " << sessionData->GetOwner()->GetUsername() << " disconnected" << std::endl;
     }
     else
     {
+        std::cout << "Not connected" << std::endl;
         std::cout << "Connection " << sessionData->GetIp() << " disconnected without logging in" << std::endl;
     }
 
     OnDisconnect(this);
     dataHandler->UserDisconnected(sessionData);
-
-    if(clientThread.joinable())
-    {
-        clientThread.join();
-    }
-    if(udpThread.joinable())
-    {
-        udpThread.join();
-    }
 }
 
 void ClientHandler::Loop()
@@ -105,6 +62,7 @@ void ClientHandler::Loop()
             {
                 case PAYLOAD_DISCONNECT:
                 {
+                    std::cout << "Received dc" << std::endl;
                     closedLocal = false;
                     delete this;
                     break;
@@ -115,13 +73,19 @@ void ClientHandler::Loop()
                     CredentialsPayload credentials;
                     packet.FromByteBuf(buf);
                     credentials.Deserialize(packet.GetData());
+                    std::cout << "Deserialized: "<<credentials.ToString() << std::endl;
                     if (!dataHandler->IsUserRegistered(credentials.Username()))
                     {
+                        std::cout << "User not registered" << std::endl;
                         UserData* user = new UserData(credentials.Username(), credentials.Password());
                         dataHandler->RegisterUser(user);
+                        std::cout << "User registered now" << std::endl;
                         sessionData->UserLogged(user);
+                        std::cerr << "User null? " << (user == nullptr) << std::endl;
+                        std::cerr << "User logged now: "<<user->GetUsername() << std::endl;
                         std::cout << user->GetUsername() << " has registered." << std::endl;
-                        packet.Create(PAYLOAD_REGISTERED);
+                        std::cerr << "User print" << std::endl;
+                        packet.CreateTrivial(PAYLOAD_REGISTERED);
                         Send(&packet, sessionData->GetFd());
 
                     }
@@ -132,7 +96,7 @@ void ClientHandler::Loop()
                         {
                             if (data->GetPassword() == credentials.Password())
                             {
-                                packet.Create(PAYLOAD_LOGGED_IN);
+                                packet.CreateTrivial(PAYLOAD_LOGGED_IN);
                                 std::cout << credentials.Username() << " has logged in"<< std::endl;
                                 Send(&packet, sessionData->GetFd());
                                 sessionData->UserLogged(data);
@@ -141,7 +105,7 @@ void ClientHandler::Loop()
                             else
                             {
                                 //TODO bad credentials
-                                packet.Create(PAYLOAD_INVALID_CREDENTIALS);
+                                packet.CreateTrivial(PAYLOAD_INVALID_CREDENTIALS);
                                 Send(&packet, sessionData->GetFd());
                             }
                         }
@@ -169,16 +133,33 @@ void ClientHandler::Loop()
                             }
                             else
                             {
-                                packet.Create(PAYLOAD_OFFLINE_USR);
+                                packet.CreateTrivial(PAYLOAD_OFFLINE_USR);
                                 Send(&packet, sessionData->GetFd());
                             }
                         }
                         else
                         {
-                            packet.Create(PAYLOAD_INEXISTENT_DEST);
+                            packet.CreateTrivial(PAYLOAD_INEXISTENT_DEST);
                             Send(&packet, sessionData->GetFd());
                         }
                     }
+                    break;
+                }
+                case PAYLOAD_AUDIO_HEADER:
+                {
+                    //TODO send ack and prepare to receive udp
+                    //TODO prepare client for receiving packets
+                    Packet packet;
+                    packet.FromByteBuf(buf);
+                    AudioMessageHeaderPayload vmhPayload;
+                    vmhPayload.Deserialize(packet.GetData());
+                    std::cout << vmhPayload.ToString() << std::endl;
+
+                    std::thread audioRecvThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
+
+                    //TODO Send ack
+                    packet.CreateTrivial(PAYLOAD_ACK);
+                    Send(&packet, sessionData->GetFd());
                     break;
                 }
                 default:
@@ -195,23 +176,40 @@ void ClientHandler::Loop()
 
 }
 
-void ClientHandler::UdpLoop()
+void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
 {
-    int n;
-    unsigned int len = sizeof(cliaddr);
-    char buffer[1024];
-    while (!shutdownReq)
+    char buf[DGRAM_PACKET_SIZE + sizeof(int)] = { 0 };
+    int tot = 0;
+    int packets = 0;
+    char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
+    int lengths[header.Segments()] = { 0 };
+    int i = 1, received = 0;
+    while (i <= header.Segments())
     {
-        std::cout<<"Receiving udp"<<std::endl;
-        n = recvfrom(udpFd, buffer, 1024, 0, (struct sockaddr*)&cliaddr, &len);
-        std::cout << "From udp thread, received: " << n << std::endl;
+        received = Read(buf, DGRAM_PACKET_SIZE + sizeof(int), sessionData->GetUDP(UDPSocket::IN)->GetFd());
+        int index = ReadUInt(buf);
+        std::cout << "Received seg: " << index << std::endl;
+        if (received > 0)
+        {
+            tot += received;
+            packets++;
+            i++;
+        }
+        lengths[index] = received - sizeof(int);
+        memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
+        memset(&buf, 0, DGRAM_PACKET_SIZE + sizeof(int));
     }
+    std::cout << "TOT: " << tot << "Packts: " << packets << std::endl;
+    std::ofstream out("received.data", std::ios::trunc | std::ios::out);
+    for (int i = 0; i < header.Segments(); i++)
+    {
+        out.write(matrix[i], lengths[i]);
+    }
+    out.close();
 }
 
 void ClientHandler::HandleConnection()
 {
     clientThread = std::thread(&ClientHandler::Loop, this);
     clientThread.detach();
-
-    udpThread = std::thread(&ClientHandler::UdpLoop, this);
 }

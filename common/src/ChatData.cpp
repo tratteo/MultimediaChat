@@ -1,4 +1,4 @@
-#include "../include/ChatData.hpp"
+#include "../ChatData.hpp"
 
 ChatData::ChatData(std::string firstUser, std::string secondUser)
 {

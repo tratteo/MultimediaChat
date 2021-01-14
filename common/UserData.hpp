@@ -3,8 +3,8 @@
 #include <list>
 #include <tuple>
 #include <algorithm>
-#include "../../common/Payloads.hpp"
-#include "../include/ChatData.hpp"
+#include "Payloads.hpp"
+#include "ChatData.hpp"
 
 class UserData
 {
@@ -24,7 +24,7 @@ class UserData
     std::string ToString() const;
     ChatData* GetChatWith(std::string username);
     inline std::list<ChatData*> GetChats() const { return chats; };
-    inline std::string GetUsername() const { return this->username; };
-    inline std::string GetPassword() const { return this->password; };
+    inline std::string GetUsername() const { return username; };
+    inline std::string GetPassword() const { return password; };
 
 };

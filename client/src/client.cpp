@@ -1,27 +1,35 @@
 #include <unistd.h>
-#include <string>
+#include <string.h>
 #include <signal.h>
 #include <thread>
 #include <iostream>
-#include "../include/CSocket.hpp"
+#include <cmath>
+#include "../../common/CSocket.hpp"
 #include "../../common/SoundRegistrer.hpp"
 #include "../../common/NetworkHandler.hpp"
 #include "../../common/Packet.hpp"
 #include "../../common/Payloads.hpp"
+#include "../../common/ByteBufferUtils.hpp"
+#include "../../common/UDPSocket.hpp"
 #define BUF_SIZE 512
 
 void CloseService(int);
+void UDPReceive(AudioMessageHeaderPayload header);
 void ExitWrapper(int code);
 void LoginRoutine();
 void ReceiveDaemon();
-void SendAudio();
+void SendAudio(std::string dest);
 
 bool logged = false;
 bool shutDown = false;
-CSocket* udpSocket;
 CSocket* clientSocket;
+UDPSocket* inUdpSock;
+UDPSocket* outUdpSock;
+
 std::thread loginThread;
 std::string username;
+
+
 
 int main(int argv, char** argc)
 {
@@ -37,13 +45,10 @@ int main(int argv, char** argc)
 	std::cout << "Multimedia Chat Client" << std::endl;
 
 	clientSocket = new CSocket(argc[1], 8080);
-	clientSocket->Init(SOCK_STREAM, 0);
+	inUdpSock = new UDPSocket(argc[1], 5051, UDPSocket::IN);
+	outUdpSock = new UDPSocket(argc[1], 5051, UDPSocket::OUT);
 
-	udpSocket = new CSocket(argc[1], 5150);
-	udpSocket->Init(SOCK_DGRAM, IPPROTO_UDP);
-
-	clientSocket->TryConnect();
-	if (!clientSocket->IsConnected()) exit(EXIT_FAILURE);
+	if(!clientSocket->TryConnect()) exit(EXIT_FAILURE);
 
 	std::thread daemon(&ReceiveDaemon);
 	daemon.detach();
@@ -98,12 +103,16 @@ int main(int argv, char** argc)
 			}
 			case 2:
 			{
+
 				std::string line;
+				std::cout << "Addressee: ";
+				std::getline(std::cin, line);
+				std::string dest = line;
 				SoundRegistrer *registrer = new SoundRegistrer();
 				std::cout << "Press enter to stop the registration" << std::endl;
 				std::cout << "Registering..." << std::endl;
 				registrer->Register([]() -> bool { std::cin.ignore(); return true; });
-				SendAudio();
+				SendAudio(dest);
 				//TODO send data over udp
 				delete registrer;
 				break;
@@ -122,7 +131,7 @@ int main(int argv, char** argc)
 void CloseService(int signal)
 {
 	Packet packet;
-	packet.Create(PAYLOAD_DISCONNECT);
+	packet.CreateTrivial(PAYLOAD_DISCONNECT);
 	Send(&packet, clientSocket->GetFd());
 	ExitWrapper(EXIT_SUCCESS);
 }
@@ -186,6 +195,21 @@ void ReceiveDaemon()
 					std::cout << "The user you tried to contact is offline" << std::endl;
 					break;
 				}
+				case PAYLOAD_AUDIO_HEADER:
+				{
+					//TODO prepare client for receiving packets
+					Packet packet;
+					packet.FromByteBuf(buf);
+					AudioMessageHeaderPayload vmhPayload;
+					vmhPayload.Deserialize(packet.GetData());
+					std::cout << vmhPayload.ToString() << std::endl;
+
+					std::thread audioRecvThread = std::thread(&UDPReceive, vmhPayload);
+
+					//TODO Send ack
+					packet.CreateTrivial(PAYLOAD_ACK);
+					Send(&packet, clientSocket->GetFd());
+				}
 			}
 		}
 	}
@@ -209,6 +233,38 @@ void LoginRoutine()
 	Send(&packet, clientSocket->GetFd());
 }
 
+void UDPReceive(AudioMessageHeaderPayload header)
+{
+	char buf[DGRAM_PACKET_SIZE +  sizeof(int)] = { 0 };
+	int tot = 0;
+	int packets = 0;
+	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
+	int lengths[header.Segments()] = { 0 };
+	int i = 1, received = 0;
+	while (i <= header.Segments())
+	{
+		received = Read(buf, DGRAM_PACKET_SIZE + sizeof(int), inUdpSock->GetFd());
+		int index = ReadUInt(buf);
+		std::cout << "Received seg: " << index << std::endl;
+		if (received > 0)
+		{
+			tot += received;
+			packets++;
+			i++;
+		}
+		lengths[index] = received - sizeof(int);
+		memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
+		memset(&buf, 0, DGRAM_PACKET_SIZE + sizeof(int));
+	}
+	std::cout << "TOT: " << tot << "Packts: " << packets << std::endl;
+	std::ofstream out("received.data", std::ios::trunc | std::ios::out);
+	for (int i = 0; i < header.Segments(); i++)
+	{
+		out.write(matrix[i], lengths[i]);
+	}
+	out.close();
+}
+
 void ExitWrapper(int code)
 {
 	shutDown = true;
@@ -216,7 +272,7 @@ void ExitWrapper(int code)
 	exit(code);
 }
 
-void SendAudio()
+void SendAudio(std::string dest)
 {
 	std::ifstream file(BUFFER_FILE, std::ifstream::in | std::ios::ate);
 	if (file.fail())
@@ -227,22 +283,73 @@ void SendAudio()
 	std::streamsize size = file.tellg();
 	file.seekg(0, std::ios::beg);
 
-	char* readBuffer = new char[1024];
-	std::cout<<"File of size: "<<size<<std::endl;
-	if (file.read(readBuffer, size))
-	{
-			struct sockaddr_in servAd = udpSocket->GetServAddr();
-			int sent = sendto(udpSocket->GetFd(), readBuffer, size, 0, (const struct sockaddr*)&servAd, sizeof(servAd));
-			if(sent == -1)
-			{
-				std::cout<<strerror(errno);
-			}
-			std::cout<<"Sent: "<<sent<<" over udp"<<std::endl;
-	}
-	else
-	{
-		std::cerr<<"Read recording error"<<std::endl;
-	}
-	
+	char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
 
+	int segs = ceil((float)size / DGRAM_PACKET_SIZE);
+
+	//Handshake
+	Packet packet;
+	AudioMessageHeaderPayload amhPayload;
+	amhPayload.Create(username, dest, segs, size);
+	packet.FromData(PAYLOAD_AUDIO_HEADER, amhPayload.Serialize(), amhPayload.Size());
+	Send(&packet, clientSocket->GetFd());
+
+	char buf[BUF_SIZE] = { 0 };
+	int bytesRead;
+	bool ack = false;
+	std::cout << "Waiting for ack" << std::endl;
+	while (!ack)
+	{
+		bytesRead = Read(buf, BUF_SIZE, clientSocket->GetFd());
+		if (bytesRead > 0)
+		{
+			if ((uint16_t)buf[0] == PAYLOAD_ACK)
+			{
+				ack = true;
+			}
+		}
+	}
+
+	int packetsSent = 0;
+	int totalSent = 0;
+	/*char handshake[sizeof(int) * 2];
+
+	std::cout << "Handshake: " << segs << ", " << size << std::endl;
+
+	PutUInt(handshake, segs);
+	PutUInt(handshake + sizeof(int), size);
+
+	std::cout << std::endl;
+	std::cout << ReadUInt(handshake) << std::endl;
+	std::cout << ReadUInt(handshake + sizeof(int)) << std::endl;
+
+	int sent = Write(handshake, 2 * sizeof(int), udpSocket);*/
+	//int sent = sendto(sock, handshake, 2 * sizeof(int), MSG_CONFIRM, (const struct sockaddr*)&servaddr, sizeof(servaddr));
+	std::cout << "Starting audio transmission" << std::endl;
+	int index = 0;
+	while (!file.eof())
+	{
+		PutUInt(buffer, index);
+		file.read(buffer + sizeof(int), DGRAM_PACKET_SIZE);
+		std::streamsize bytesRead = file.gcount();
+		std::cout << "Sending seg: " << index << std::endl;
+
+		//Packet packet;
+		//packet.FromData(DGRAM_AUDIO_PACKET, buffer, DGRAM_PACKET_SIZE + sizeof(int));
+
+		int sent = WriteTo(buffer, bytesRead + sizeof(int), outUdpSock->GetFd(), outUdpSock->GetSockAddr());
+		//int sent = Write(buffer, bytesRead + sizeof(int), udpSocket);
+		//int sent = sendto(sock, buffer, s, 0, (const struct sockaddr*)&servaddr, sizeof(servaddr));
+		if (sent == -1)
+		{
+			std::cout << strerror(errno);
+			exit(1);
+		}
+		index++;
+		totalSent += sent;
+		packetsSent++;
+		usleep(25);
+	}
+	std::cout << "TOT: " << totalSent << "Packets: " << packetsSent << std::endl;
+	file.close();
 }

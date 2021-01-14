@@ -2,7 +2,7 @@
 #include <string>
 #include <tuple>
 #include <list>
-#include "../../common/Payloads.hpp"
+#include "Payloads.hpp"
 
 class ChatData
 {

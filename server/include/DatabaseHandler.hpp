@@ -8,8 +8,8 @@
 #include <sys/types.h>
 #include <regex>
 #include "UserData.hpp"
-#include "../include/ClientSessionData.hpp"
-#include "../include/ChatData.hpp"
+#include "../../common/ClientSessionData.hpp"
+#include "../../common/ChatData.hpp"
 #include "Serializer.hpp"
 
 #define DATABASE_PATH "data"

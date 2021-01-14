@@ -13,7 +13,7 @@ class Packet
 	char* Serialize() const;
 	void FromData(char type, char* payload, int payloadLength);
 	void FromByteBuf(char* packetByteBuf);
-	void Create(char type);
+	void CreateTrivial(char type);
 	inline char GetType() const { return type; };
 	inline int GetLength() const { return length; };
 	inline int GetTotalLength() const { return length + sizeof(int) + 1; };

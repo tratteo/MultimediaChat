@@ -1,10 +1,6 @@
-#include <alsa/asoundlib.h>
+#pragma once
 #include <stdio.h>
-
-#define ALSA_PCM_NEW_HW_PARAMS_API
-#define PCM_DEVICE "default"
-#define CHANNELS 2
-#define SAMPLE_RATE 44100
+#include "Sound.hpp"
 
 class SoundPlayer
 {
@@ -12,7 +8,7 @@ class SoundPlayer
 	SoundPlayer();
 	~SoundPlayer();
 	void Init();
-	void PlaySound(int fd);
+	void PlaySound();
 
 
 	private:

@@ -1,4 +1,4 @@
-#include "NetworkHandler.hpp"
+#include "../NetworkHandler.hpp"
 
 int Write(char* buffer, int len, int fd)
 {
@@ -34,4 +34,24 @@ bool Send(Packet *packet, int fd)
 	int packetLen = packet->GetTotalLength();
 	int sent = Write(packet->Serialize(), packetLen, fd);
 	return sent == packetLen;
+}
+
+int WriteTo(char* buffer, int len, int fd, struct sockaddr_in* addr)
+{
+
+	int written = 0;
+	while (written < len)
+	{
+		int res = sendto(fd, buffer, len, 0, (const struct sockaddr*)addr, sizeof((*addr)));
+		if (res != -1)
+		{
+			written += res;
+		}
+		else
+		{
+			return -1;
+		}
+
+	}
+	return written;
 }

@@ -80,18 +80,12 @@ void SoundRegistrer::Register(std::function<bool()> stopCondition)
 
 void SoundRegistrer::RegistrerLoop()
 {
-    int fd = open(BUFFER_FILE, O_CREAT | O_RDWR | O_TRUNC);
-    if (fd == -1)
-    {
-        std::cerr << "Error opening file for recording, skipping" << std::endl;
-        return;
-    }
-    /*std::ofstream outStream(BUFFER_FILE, std::ofstream::out | std::ofstream::trunc);
+    std::ofstream outStream(BUFFER_FILE, std::ofstream::out | std::ofstream::trunc);
     if (outStream.fail())
     {
         std::cerr << "Error opening file for recording, skipping" << std::endl;
         return;
-    }*/
+    }
 
     while (!shouldStop)
     {
@@ -109,19 +103,7 @@ void SoundRegistrer::RegistrerLoop()
         {
             fprintf(stderr, "short read, read %d frames\n", rc);
         }
-        write(fd, buffer, size);
-        //outStream << buffer;
+        outStream.write(buffer, size);
     }
-    close(fd);
-    //outStream.close();
-}
-
-int SoundRegistrer::Write(char* buffer, int len, int fd)
-{
-	int written = 0;
-	while (written < len)
-	{
-		written += write(fd, buffer + written, len - written);
-	}
-	return written;
+    outStream.close();
 }

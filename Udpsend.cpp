@@ -111,12 +111,12 @@ int main()
 	while(!file.eof()) 
 	{
 		PutInt(buffer, i);
-		file.read(buffer+4, 4096);
+		file.read(buffer + sizeof(int), 4096);
 		std::streamsize s=file.gcount();
 
 		std::cout<<"Sending seg: "<<i<<std::endl;
 
-		int sent = sendto(sock, buffer, s, 0, (const struct sockaddr*)&servaddr, sizeof(servaddr));
+		int sent = sendto(sock, buffer, s +sizeof(int), 0, (const struct sockaddr*)&servaddr, sizeof(servaddr));
 		if(sent == -1)
 		{
 			std::cout<<strerror(errno);

@@ -57,7 +57,7 @@ void Packet::FromByteBuf(char* packetByteBuf)
 	memcpy(data, packetByteBuf + 5, length);
 }
 
-void Packet::Create(char type)
+void Packet::CreateTrivial(char type)
 {
 	this->type = type;
 	data = nullptr;

@@ -8,9 +8,10 @@
 #include <arpa/inet.h>
 #include <string>
 #include <list>
-#include "../include/UserData.hpp"
+#include "../../common/Sound.hpp"
+#include "../../common/UserData.hpp"
 #include "../../common/errhandler.hpp" 
-#include "../include/ClientSessionData.hpp"
+#include "../../common/ClientSessionData.hpp"
 #include "../../common/Payloads.hpp"
 #include "../../common/Packet.hpp"
 #include "../../common/NetworkHandler.hpp"
@@ -27,9 +28,7 @@ class ClientHandler
     void CloseConnection();
 
     private:
-    void UdpLoop();
-    int udpFd;
-    struct sockaddr_in servaddr, cliaddr;
+    void UDPReceive(AudioMessageHeaderPayload amhPayload);
     ClientSessionData *sessionData;
     DataBaseHandler *dataHandler;
     bool shutdownReq = false;

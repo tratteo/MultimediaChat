@@ -96,6 +96,8 @@ int main(int argc, char **argv) {
 
 	snd_pcm_hw_params_get_period_time(params, &tmp, NULL);
 
+	
+
 	while(read(0, buff, buff_size) != 0) 
 	{
 

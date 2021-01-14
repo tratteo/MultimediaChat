@@ -70,7 +70,7 @@ int main()
     while(i <= segs)
     {
 		//std::cout<<"Receiving udp"<<std::endl;
-		n = recvfrom(sock, buffer, 4100, 0, (struct sockaddr*)&cliaddr, &len);
+		n = recv(sock, buffer, 4100, 0);
 		int number = ReadInt(buffer);
 		std::cout<<"Received seg: "<<number<<std::endl;
 		if(n > 0)

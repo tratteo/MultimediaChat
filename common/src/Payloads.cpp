@@ -15,45 +15,6 @@ void Payload::Create(int size)
 	this->size = size;
 }
 
-void Payload::PutString(char* startAddress, std::string value) const
-{
-	int len = value.size();
-	for (int i = 0; i < len; i++)
-	{
-		startAddress[i] = value.at(i);
-	}
-}
-
-void Payload::PutInt(char* startAddress, int value) const
-{
-	int size = sizeof(int);
-	for (int i = 0; i < size; i++)
-	{
-		startAddress[i] = (char)(value >> (sizeof(char) * (i - 1)));
-	}
-}
-
-int Payload::ReadInt(char* currentAddress) const
-{
-	int res = 0x0;
-	int size = sizeof(int);
-	for (int i = 0; i < size; i++)
-	{
-		res |= (currentAddress[i] << (sizeof(char) * (i - 1)));
-	}
-	return res;
-}
-
-std::string Payload::ReadString(char* currentAddress, int length) const
-{
-	std::string res = "";
-	for (int i = 0; i < length; i++)
-	{
-		res += currentAddress[i];
-	}
-	return res;
-}
-
 void MessagePayload::Create(std::string from, std::string to, std::string message)
 {
 	this->from = from;
@@ -68,13 +29,13 @@ void MessagePayload::Create(std::string from, std::string to, std::string messag
 void MessagePayload::Deserialize(char* payload)
 {
 	int offset = 0;
-	fromLen = ReadInt(payload + offset);
+	fromLen = ReadUInt(payload + offset);
 	offset += sizeof(int);
 
-	toLen = ReadInt(payload + offset);
+	toLen = ReadUInt(payload + offset);
 	offset += sizeof(int);
 
-	messageLen = ReadInt(payload + offset);
+	messageLen = ReadUInt(payload + offset);
 	offset += sizeof(int);
 
 	from = ReadString(payload + offset, fromLen);
@@ -95,13 +56,13 @@ char* MessagePayload::Serialize() const
 
 	int offset = 0;
 
-	PutInt(buffer + offset, fromLen);
+	PutUInt(buffer + offset, fromLen);
 	offset += sizeof(int);
 
-	PutInt(buffer + offset, toLen);
+	PutUInt(buffer + offset, toLen);
 	offset += sizeof(int);
 
-	PutInt(buffer + offset, messageLen);
+	PutUInt(buffer + offset, messageLen);
 	offset += sizeof(int);
 
 	PutString(buffer + offset, from);
@@ -134,10 +95,10 @@ void CredentialsPayload::Create(std::string username, std::string password)
 void CredentialsPayload::Deserialize(char* payload)
 {
 	int offset = 0;
-	usernameLen = ReadInt(payload + offset);
+	usernameLen = ReadUInt(payload + offset);
 	offset += sizeof(int);
 
-	passwordLen = ReadInt(payload + offset);
+	passwordLen = ReadUInt(payload + offset);
 	offset += sizeof(int);
 
 	username = ReadString(payload + offset, usernameLen);
@@ -154,10 +115,10 @@ char* CredentialsPayload::Serialize() const
 	char* buffer = new char[size];
 	int offset = 0;
 
-	PutInt(buffer + offset, usernameLen);
+	PutUInt(buffer + offset, usernameLen);
 	offset += sizeof(int);
 
-	PutInt(buffer + offset, passwordLen);
+	PutUInt(buffer + offset, passwordLen);
 	offset += sizeof(int);
 
 	PutString(buffer + offset, username);
@@ -174,4 +135,82 @@ std::string CredentialsPayload::ToString() const
 	return username + "-" + password + "\n";
 }
 
+void AudioMessageHeaderPayload::Create(std::string from, std::string to, int segments, int messageLength)
+{
+	this->from = from;
+	this->to = to;
+	this->fromLen = from.length();
+	this->toLen = to.length();
+	this->segments = segments;
+	this->messageLength = messageLength;
 
+	Payload::Create(fromLen + toLen + sizeof(int) * 4);
+}
+void AudioMessageHeaderPayload::Deserialize(char* payload)
+{
+	int offset = 0;
+
+	fromLen = ReadUInt(payload + offset);
+	offset += sizeof(int);
+
+	toLen = ReadUInt(payload + offset);
+	offset += sizeof(int);
+
+	from = ReadString(payload + offset, fromLen);
+	offset += fromLen;
+
+	to = ReadString(payload + offset, toLen);
+	offset += toLen;
+
+	segments = ReadUInt(payload + offset);
+	offset += sizeof(int);
+
+	messageLength = ReadUInt(payload + offset);
+	offset += sizeof(int);
+
+	Payload::Create(offset);
+}
+char* AudioMessageHeaderPayload::Serialize() const
+{
+	char* buffer = new char[size];
+	int offset = 0;
+
+	PutUInt(buffer + offset, fromLen);
+	offset += sizeof(int);
+
+	PutUInt(buffer + offset, toLen);
+	offset += sizeof(int);
+
+	PutString(buffer + offset, from);
+	offset += fromLen;
+
+	PutString(buffer + offset, to);
+	offset += toLen;
+
+	PutUInt(buffer + offset, segments);
+	offset += sizeof(int);
+
+	PutUInt(buffer + offset, messageLength);
+	offset += sizeof(int);
+
+	return buffer;
+	
+}
+std::string AudioMessageHeaderPayload::ToString() const
+{
+	return from + ">" + to + ", Voice msg of segs: " + std::to_string(segments) + ", length: " + std::to_string(messageLength);
+}
+//
+//void DgramAudioPayload::Create(int index)
+//{
+//	this->index = index;
+//	Payload::Create(sizeof(int));
+//}
+//void DgramAudioPayload::Deserialize(char* payload)
+//{
+//	int offset = 0;
+//	index = ReadUInt(payload + offset);
+//	offset += sizeof(int);
+//}
+//char* DgramAudioPayload::Serialize() const;
+//std::string DgramAudioPayload::ToString() const;
