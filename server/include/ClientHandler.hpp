@@ -27,6 +27,7 @@ class ClientHandler
     void CloseConnection();
 
     private:
+    void UdpLoop();
     int udpFd;
     struct sockaddr_in servaddr, cliaddr;
     ClientSessionData *sessionData;

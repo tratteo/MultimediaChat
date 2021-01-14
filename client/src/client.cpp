@@ -1,5 +1,5 @@
 #include <unistd.h>
-#include <string.h>
+#include <string>
 #include <signal.h>
 #include <thread>
 #include <iostream>
@@ -36,11 +36,11 @@ int main(int argv, char** argc)
 
 	std::cout << "Multimedia Chat Client" << std::endl;
 
-	clientSocket = new CSocket(argc[1]);
+	clientSocket = new CSocket(argc[1], 8080);
 	clientSocket->Init(SOCK_STREAM, 0);
 
-	udpSocket = new CSocket(argc[1]);
-	udpSocket->Init(SOCK_DGRAM, 0);
+	udpSocket = new CSocket(argc[1], 5150);
+	udpSocket->Init(SOCK_DGRAM, IPPROTO_UDP);
 
 	clientSocket->TryConnect();
 	if (!clientSocket->IsConnected()) exit(EXIT_FAILURE);
@@ -227,11 +227,22 @@ void SendAudio()
 	std::streamsize size = file.tellg();
 	file.seekg(0, std::ios::beg);
 
-	char* readBuffer = new char[size];
+	char* readBuffer = new char[1024];
+	std::cout<<"File of size: "<<size<<std::endl;
 	if (file.read(readBuffer, size))
 	{
-		/* worked! */
+			struct sockaddr_in servAd = udpSocket->GetServAddr();
+			int sent = sendto(udpSocket->GetFd(), readBuffer, size, 0, (const struct sockaddr*)&servAd, sizeof(servAd));
+			if(sent == -1)
+			{
+				std::cout<<strerror(errno);
+			}
+			std::cout<<"Sent: "<<sent<<" over udp"<<std::endl;
 	}
-	struct sockaddr_in servAd = udpSocket->GetServAddr();
-	sendto(udpSocket->GetFd(), readBuffer, size, MSG_CONFIRM, (const struct sockaddr*)&servAd, sizeof(servAd));
+	else
+	{
+		std::cerr<<"Read recording error"<<std::endl;
+	}
+	
+
 }

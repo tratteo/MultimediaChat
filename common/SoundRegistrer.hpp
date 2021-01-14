@@ -10,7 +10,7 @@
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #define PCM_DEVICE "default"
 #define CHANNELS 2
-#define SAMPLE_RATE 44100
+#define SAMPLE_RATE 1024
 #define BUFFER_FILE "recording.data"
 
 class SoundRegistrer

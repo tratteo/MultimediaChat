@@ -15,10 +15,16 @@ ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *da
     memset(&servaddr, 0, sizeof(servaddr));
     memset(&cliaddr, 0, sizeof(cliaddr));
 
+    int opt = 1;
+    if (setsockopt(udpFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) 
+    { 
+        handle_fatal_error("Unable to setsockopt");
+    } 
+
     // Filling server information 
     servaddr.sin_family = AF_INET; // IPv4 
-    servaddr.sin_addr.s_addr = INADDR_ANY;
-    servaddr.sin_port = htons(8080);
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(5150);
 
     // Bind the socket with the server address 
     if (bind(udpFd, (const struct sockaddr*)&servaddr,
@@ -58,6 +64,12 @@ void ClientHandler::CloseConnection()
     {
         handle_error("Unable to close client descriptor");
     }
+
+    if(close(udpFd) < 0)
+    {
+        handle_error("Unable to close client udp descriptor");
+    }
+
     if (sessionData->GetOwner() != nullptr)
     {
         std::cout << "User " << sessionData->GetOwner()->GetUsername() << " disconnected" << std::endl;
@@ -69,6 +81,15 @@ void ClientHandler::CloseConnection()
 
     OnDisconnect(this);
     dataHandler->UserDisconnected(sessionData);
+
+    if(clientThread.joinable())
+    {
+        clientThread.join();
+    }
+    if(udpThread.joinable())
+    {
+        udpThread.join();
+    }
 }
 
 void ClientHandler::Loop()
@@ -174,20 +195,23 @@ void ClientHandler::Loop()
 
 }
 
+void ClientHandler::UdpLoop()
+{
+    int n;
+    unsigned int len = sizeof(cliaddr);
+    char buffer[1024];
+    while (!shutdownReq)
+    {
+        std::cout<<"Receiving udp"<<std::endl;
+        n = recvfrom(udpFd, buffer, 1024, 0, (struct sockaddr*)&cliaddr, &len);
+        std::cout << "From udp thread, received: " << n << std::endl;
+    }
+}
+
 void ClientHandler::HandleConnection()
 {
     clientThread = std::thread(&ClientHandler::Loop, this);
     clientThread.detach();
 
-    udpThread = std::thread([&]()
-    {
-            int n;
-            unsigned int len = sizeof(cliaddr);
-            char buffer[2 << 26];
-            while (!shutdownReq)
-            {
-                n = recvfrom(udpFd, (char*)buffer, 2 << 26, MSG_WAITALL, (struct sockaddr*)&cliaddr, &len);
-                std::cout << "From udp thread, received: " << n << std::endl;
-            }
-    });
+    udpThread = std::thread(&ClientHandler::UdpLoop, this);
 }

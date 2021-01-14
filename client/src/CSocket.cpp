@@ -1,8 +1,9 @@
 #include "../include/CSocket.hpp"
 
-CSocket::CSocket(char* server_ip)
+CSocket::CSocket(char* server_ip, int port)
 {
 	connected = false;
+	this->port = port;
 	this->serverIp = server_ip;
 }
 
@@ -19,7 +20,7 @@ void CSocket::Init(int type, int protocol)
 	}
 	
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_port = htons(PORT);
+	servAddr.sin_port = htons(port);
 
 	// Convert IPv4 and IPv6 addresses from text to binary form, if the conversion fails, the ip format is not correct
 	if (inet_pton(AF_INET, serverIp, &servAddr.sin_addr) <= 0)

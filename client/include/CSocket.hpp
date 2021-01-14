@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <iostream>
 #include "../../common/errhandler.hpp"
-#define PORT 8080
 
 class CSocket
 {
@@ -12,11 +11,12 @@ class CSocket
 	bool connected;
 	char* serverIp;
 	int socketFd;
+	int port;
 	struct sockaddr_in servAddr;
 
 	public:
 	~CSocket();
-	CSocket(char* serverIp);
+	CSocket(char* serverIp, int port);
 	void Init(int type, int protocol);
 	inline struct sockaddr_in GetServAddr() const { return servAddr; }
 	int GetFd() const;
