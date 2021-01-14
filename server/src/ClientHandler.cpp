@@ -10,7 +10,6 @@ ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *da
 
 ClientHandler::~ClientHandler()
 {
-    std::cout << "Handler ~" << std::endl;
     CloseConnection();
     delete sessionData;
 }
@@ -18,7 +17,7 @@ ClientHandler::~ClientHandler()
 void ClientHandler::CloseConnection()
 {
     shutdownReq = true;
-    
+
     if (closedLocal)
     {
         std::cout << "Closed local" << std::endl;
@@ -33,15 +32,12 @@ void ClientHandler::CloseConnection()
 
         }
     }
-    std::cout << "Before owner" << std::endl;
     if (sessionData->GetOwner() != nullptr)
     {
-        std::cerr << "Connected" << std::endl;
         std::cout << "User " << sessionData->GetOwner()->GetUsername() << " disconnected" << std::endl;
     }
     else
     {
-        std::cout << "Not connected" << std::endl;
         std::cout << "Connection " << sessionData->GetIp() << " disconnected without logging in" << std::endl;
     }
 
@@ -62,7 +58,6 @@ void ClientHandler::Loop()
             {
                 case PAYLOAD_DISCONNECT:
                 {
-                    std::cout << "Received dc" << std::endl;
                     closedLocal = false;
                     delete this;
                     break;
@@ -73,18 +68,11 @@ void ClientHandler::Loop()
                     CredentialsPayload credentials;
                     packet.FromByteBuf(buf);
                     credentials.Deserialize(packet.GetData());
-                    std::cout << "Deserialized: "<<credentials.ToString() << std::endl;
                     if (!dataHandler->IsUserRegistered(credentials.Username()))
                     {
-                        std::cout << "User not registered" << std::endl;
                         UserData* user = new UserData(credentials.Username(), credentials.Password());
                         dataHandler->RegisterUser(user);
-                        std::cout << "User registered now" << std::endl;
                         sessionData->UserLogged(user);
-                        std::cerr << "User null? " << (user == nullptr) << std::endl;
-                        std::cerr << "User logged now: "<<user->GetUsername() << std::endl;
-                        std::cout << user->GetUsername() << " has registered." << std::endl;
-                        std::cerr << "User print" << std::endl;
                         packet.CreateTrivial(PAYLOAD_REGISTERED);
                         Send(&packet, sessionData->GetFd());
 
@@ -147,6 +135,7 @@ void ClientHandler::Loop()
                 }
                 case PAYLOAD_AUDIO_HEADER:
                 {
+                    std::cout<<"Received audio header"<<std::endl;
                     //TODO send ack and prepare to receive udp
                     //TODO prepare client for receiving packets
                     Packet packet;
@@ -155,12 +144,42 @@ void ClientHandler::Loop()
                     vmhPayload.Deserialize(packet.GetData());
                     std::cout << vmhPayload.ToString() << std::endl;
 
-                    std::thread audioRecvThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
+                    if(dataHandler->IsUserRegistered(vmhPayload.To()))
+                    {
+                        ClientSessionData *destData = dataHandler->GetUserSession(vmhPayload.To());
+                        if(destData != nullptr)
+                        {
+                            std::cout<<"Sending ack to client"<<std::endl;
+                            packet.CreateTrivial(PAYLOAD_ACK);
+                            bool res = Send(&packet, sessionData->GetFd());
 
-                    //TODO Send ack
-                    packet.CreateTrivial(PAYLOAD_ACK);
-                    Send(&packet, sessionData->GetFd());
+                            std::thread audioRecvThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
+                            audioRecvThread.detach();
+                        }
+                        else
+                        {
+                            packet.CreateTrivial(PAYLOAD_OFFLINE_USR);
+                            Send(&packet, sessionData->GetFd());
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        packet.CreateTrivial(PAYLOAD_INEXISTENT_DEST);
+                        Send(&packet, sessionData->GetFd());
+                        break;
+                    }
                     break;
+                }
+                case PAYLOAD_ACK:
+                {
+                    // Notify all intereset acks
+                    for(auto &ack : acks)
+					{
+						*ack = true;
+					}
+					acks.clear();
+					break;
                 }
                 default:
                     break;
@@ -186,6 +205,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
     int i = 1, received = 0;
     while (i <= header.Segments())
     {
+        std::cout<<"Receiving"<<std::endl;
         received = Read(buf, DGRAM_PACKET_SIZE + sizeof(int), sessionData->GetUDP(UDPSocket::IN)->GetFd());
         int index = ReadUInt(buf);
         std::cout << "Received seg: " << index << std::endl;
@@ -200,12 +220,59 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         memset(&buf, 0, DGRAM_PACKET_SIZE + sizeof(int));
     }
     std::cout << "TOT: " << tot << "Packts: " << packets << std::endl;
-    std::ofstream out("received.data", std::ios::trunc | std::ios::out);
+    std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
     for (int i = 0; i < header.Segments(); i++)
     {
         out.write(matrix[i], lengths[i]);
     }
     out.close();
+
+    Packet packet;
+    ClientSessionData* destData = dataHandler->GetUserSession(header.To());
+    if(destData != nullptr)
+    {
+        //TODO user is online, forward the message
+        //TODO send header
+        //wait for ack
+        //start trasmission
+
+        /*packet.FromData(PAYLOAD_AUDIO_HEADER, header.Serialize(), header.Size());
+        Send(&packet, destData->GetFd());
+
+        bool ack = false;
+        acks.push_back(&ack);
+        while(!ack) usleep(200000);
+
+        char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
+        int packetsSent = 0;
+        int totalSent = 0;
+        int index = 0;
+        std::cout<<"Trasmitting data.."<<std::endl;
+        std::ifstream file(RECEIVED_FILE, std::ifstream::in);
+        if (file.fail())
+        {
+            std::cerr << "Unable to open recording file" << std::endl;
+            return;
+        }
+        while (!file.eof())
+        {
+            PutUInt(buffer, index);
+            file.read(buffer + sizeof(int), DGRAM_PACKET_SIZE);
+            std::streamsize bytesRead = file.gcount();
+            int sent = WriteTo(buffer, bytesRead + sizeof(int), destData->GetUDP(UDPSocket::OUT)->GetFd(), destData->GetUDP(UDPSocket::OUT)->GetSockAddr());
+            if (sent == -1)
+            {
+                std::cout << strerror(errno);
+                exit(1);
+            }
+            index++;
+            totalSent += sent;
+            packetsSent++;
+            usleep(100);
+	    }
+        std::cout << "TOT: " << totalSent << "Packets: " << packetsSent << std::endl;
+        file.close();*/
+    }
 }
 
 void ClientHandler::HandleConnection()

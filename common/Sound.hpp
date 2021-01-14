@@ -7,4 +7,5 @@
 #define CHANNELS 2
 #define SAMPLE_RATE 44100
 #define BUFFER_FILE "recording.data"
+#define RECEIVED_FILE "received.data"
 #define PCM_DEVICE "default"
