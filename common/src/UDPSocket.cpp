@@ -23,6 +23,7 @@ UDPSocket::UDPSocket(char* ip, int port, Type type)
 	switch (type)
 	{
 		case UDPSocket::IN:
+		{
 			int opt = 1;
 			if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
 			{
@@ -35,9 +36,12 @@ UDPSocket::UDPSocket(char* ip, int port, Type type)
 				exit(EXIT_FAILURE);
 			}
 			break;
+		}
 		case UDPSocket::OUT:
+		{
 			servAddr.sin_addr.s_addr = inet_addr(ip);
 			break;
+		}
 		default:
 			break;
 	}
