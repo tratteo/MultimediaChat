@@ -320,7 +320,6 @@ void SendAudio(std::string dest)
 			stop = true;
 			break;
 		} 
-		
 	}
 	if(stop) 
 	{
