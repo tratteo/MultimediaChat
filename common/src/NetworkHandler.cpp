@@ -38,11 +38,11 @@ bool Send(Packet *packet, int fd)
 
 int WriteTo(char* buffer, int len, int fd, struct sockaddr_in* addr)
 {
-
 	int written = 0;
 	while (written < len)
 	{
-		int res = sendto(fd, buffer, len, 0, (const struct sockaddr*)addr, sizeof((*addr)));
+		sockaddr_in addrv = *addr;
+		int res = sendto(fd, buffer, len, 0, (struct sockaddr*)addr, sizeof(addrv));
 		if (res != -1)
 		{
 			written += res;

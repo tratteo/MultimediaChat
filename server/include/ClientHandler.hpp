@@ -28,6 +28,7 @@ class ClientHandler
     void CloseConnection();
 
     private:
+    void UserLogged();
     std::list<bool*> acks;
     void UDPReceive(AudioMessageHeaderPayload amhPayload);
     ClientSessionData *sessionData;

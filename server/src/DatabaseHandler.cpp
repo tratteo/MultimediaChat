@@ -96,16 +96,12 @@ void DataBaseHandler::ParseDatabase()
 
 void DataBaseHandler::UserConnected(ClientSessionData* data)
 {
-    mutex.lock();
     connectedUsers.push_front(data);
-    mutex.unlock();
 }
 
 void DataBaseHandler::UserDisconnected(ClientSessionData* data)
 {
-    mutex.lock();
     connectedUsers.remove(data);
-    mutex.unlock();
 }
 
 UserData* DataBaseHandler::GetRegisteredUser(std::string username)
@@ -167,12 +163,10 @@ void DataBaseHandler::AddMessage(MessagePayload message)
 
 void DataBaseHandler::RegisterUser(UserData* user)
 {   
-    mutex.lock();
 	if (!IsUserRegistered(user->GetUsername()))
 	{
         registeredUsers.push_front(user);
 	}
-    mutex.unlock();
 }
 
 bool DataBaseHandler::IsUserRegistered(std::string username)

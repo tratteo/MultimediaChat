@@ -12,23 +12,15 @@ class UDPSocket
 
 	public:
 
-	enum Type
-	{
-		IN,
-		OUT
-	};
-
-	UDPSocket(char* ip, int port, Type type);
+	UDPSocket(char* ip, int port);
 	~UDPSocket();
-	inline Type GetType() { return type; }
 	inline int GetPort() { return port; }
 	inline char* GetIp() { return ip; }
 	inline int GetFd() { return fd; }
-	inline struct sockaddr_in* GetSockAddr() { return &servAddr; }
+	struct sockaddr_in GetSockAddr() ;
 	private:
 	struct sockaddr_in servAddr;
 	int port;
 	char* ip;
 	int fd;
-	Type type;
 };

@@ -200,6 +200,35 @@ std::string AudioMessageHeaderPayload::ToString() const
 {
 	return from + ">" + to + ", Voice msg of segs: " + std::to_string(segments) + ", length: " + std::to_string(messageLength);
 }
+
+
+void DgramPortPayload::Create(int port)
+{
+	this->port = port;
+	Payload::Create(sizeof(int));
+}
+void DgramPortPayload::Deserialize(char* payload)
+{
+	int offset = 0;
+	port = ReadUInt(payload + offset);
+	offset += sizeof(int);
+	Payload::Create(offset);
+}
+char* DgramPortPayload::Serialize() const
+{
+	char* buffer = new char[size];
+	int offset = 0;
+	PutUInt(buffer + offset, port);
+	offset += sizeof(int);
+
+	return buffer;
+}
+std::string DgramPortPayload::ToString() const
+{
+	return "Port: " + std::to_string(port);
+}
+
+
 //
 //void DgramAudioPayload::Create(int index)
 //{

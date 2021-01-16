@@ -45,6 +45,21 @@ void ClientHandler::CloseConnection()
     dataHandler->UserDisconnected(sessionData);
 }
 
+void ClientHandler::UserLogged()
+{
+    std::thread([&]()
+    {
+        usleep(100000);
+        Packet packet;
+        DgramPortPayload portPayload;
+        portPayload.Create(sessionData->GetUdp()->GetPort());
+        packet.FromData(PAYLOAD_DED_DGRAM_PORT, portPayload.Serialize(), portPayload.Size());
+        Send(&packet, sessionData->GetFd());    
+    }).detach();
+    //send the random port to the client
+    
+}
+
 void ClientHandler::Loop()
 {
     char buf[BUF_SIZE] = {0};
@@ -73,9 +88,11 @@ void ClientHandler::Loop()
                         UserData* user = new UserData(credentials.Username(), credentials.Password());
                         dataHandler->RegisterUser(user);
                         sessionData->UserLogged(user);
+                        std::cout << credentials.Username() << " has registered"<< std::endl;
                         packet.CreateTrivial(PAYLOAD_REGISTERED);
                         Send(&packet, sessionData->GetFd());
-
+                        UserLogged();
+                        //TODO send udp stats
                     }
                     else
                     {
@@ -88,6 +105,8 @@ void ClientHandler::Loop()
                                 std::cout << credentials.Username() << " has logged in"<< std::endl;
                                 Send(&packet, sessionData->GetFd());
                                 sessionData->UserLogged(data);
+                                //TODO send udp stats
+                                UserLogged();
                                 //TODO logged in
                             }
                             else
@@ -135,7 +154,7 @@ void ClientHandler::Loop()
                 }
                 case PAYLOAD_AUDIO_HEADER:
                 {
-                    std::cout<<"Received audio header"<<std::endl;
+                    //std::cout<<"Received audio header"<<std::endl;
                     //TODO send ack and prepare to receive udp
                     //TODO prepare client for receiving packets
                     Packet packet;
@@ -148,13 +167,14 @@ void ClientHandler::Loop()
                     {
                         ClientSessionData *destData = dataHandler->GetUserSession(vmhPayload.To());
                         if(destData != nullptr)
-                        {
-                            std::cout<<"Sending ack to client"<<std::endl;
+                        {                      
+                            std::thread audioRecvThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
+                            audioRecvThread.detach();
+                            //std::cout<<"Sending ack to client"<<std::endl;
                             packet.CreateTrivial(PAYLOAD_ACK);
                             bool res = Send(&packet, sessionData->GetFd());
 
-                            std::thread audioRecvThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
-                            audioRecvThread.detach();
+      
                         }
                         else
                         {
@@ -181,6 +201,16 @@ void ClientHandler::Loop()
 					acks.clear();
 					break;
                 }
+                case PAYLOAD_DED_DGRAM_PORT:
+                {
+                    Packet packet;
+                    packet.FromByteBuf(buf);
+                    DgramPortPayload portPayload;
+                    portPayload.Deserialize(packet.GetData());
+                    std::cout<<"The client udp is on "<<portPayload.ToString()<<std::endl;
+                    sessionData->udpPort = portPayload.Port();
+                    break;
+                }
                 default:
                     break;
             }
@@ -205,10 +235,10 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
     int i = 1, received = 0;
     while (i <= header.Segments())
     {
-        std::cout<<"Receiving"<<std::endl;
-        received = Read(buf, DGRAM_PACKET_SIZE + sizeof(int), sessionData->GetUDP(UDPSocket::IN)->GetFd());
+        //received = Read(buf, DGRAM_PACKET_SIZE + sizeof(int), sessionData->GetUdp()->GetFd());
+        received = read(sessionData->GetUdp()->GetFd(), buf, DGRAM_PACKET_SIZE + sizeof(int));
         int index = ReadUInt(buf);
-        std::cout << "Received seg: " << index << std::endl;
+        //std::cout << "Received seg: " << index << std::endl;
         if (received > 0)
         {
             tot += received;
@@ -219,7 +249,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
         memset(&buf, 0, DGRAM_PACKET_SIZE + sizeof(int));
     }
-    std::cout << "TOT: " << tot << "Packts: " << packets << std::endl;
+    std::cout << "Bytes: " << tot << ", packets: " << packets << std::endl;
     std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
     for (int i = 0; i < header.Segments(); i++)
     {
@@ -236,13 +266,13 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         //wait for ack
         //start trasmission
 
-        /*packet.FromData(PAYLOAD_AUDIO_HEADER, header.Serialize(), header.Size());
+        packet.FromData(PAYLOAD_AUDIO_HEADER, header.Serialize(), header.Size());
         Send(&packet, destData->GetFd());
-
+/* 
         bool ack = false;
         acks.push_back(&ack);
-        while(!ack) usleep(200000);
-
+        while(!ack) usleep(200000); */
+        usleep(25000);
         char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
         int packetsSent = 0;
         int totalSent = 0;
@@ -254,12 +284,17 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
             std::cerr << "Unable to open recording file" << std::endl;
             return;
         }
+        struct sockaddr_in addr;
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(destData->udpPort);
+        addr.sin_addr.s_addr = inet_addr(destData->GetIp());
+        //std::cout<<"Sending to port: "<<addr.sin_port<<std::endl;
         while (!file.eof())
         {
             PutUInt(buffer, index);
             file.read(buffer + sizeof(int), DGRAM_PACKET_SIZE);
             std::streamsize bytesRead = file.gcount();
-            int sent = WriteTo(buffer, bytesRead + sizeof(int), destData->GetUDP(UDPSocket::OUT)->GetFd(), destData->GetUDP(UDPSocket::OUT)->GetSockAddr());
+            int sent = sendto(destData->GetUdp()->GetFd(), buffer, bytesRead + sizeof(int), MSG_CONFIRM, (struct sockaddr*)&addr, sizeof(addr));
             if (sent == -1)
             {
                 std::cout << strerror(errno);
@@ -270,8 +305,8 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
             packetsSent++;
             usleep(100);
 	    }
-        std::cout << "TOT: " << totalSent << "Packets: " << packetsSent << std::endl;
-        file.close();*/
+        std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;
+        file.close();
     }
 }
 

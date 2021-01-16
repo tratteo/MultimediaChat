@@ -5,7 +5,7 @@ INCLUDES 	= -I/include -I../common
 SRCDIR 		= src
 SRCS 		= $(SRCDIR)/client.cpp ../common/src/CSocket.cpp ../common/src/errhandler.cpp ../common/src/Payloads.cpp \
 				../common/src/NetworkHandler.cpp ../common/src/Packet.cpp ../common/src/SoundRegistrer.cpp ../common/src/UDPSocket.cpp \
-				../common/src/ByteBufferUtils.cpp ../common/src/ClientSessionData.cpp
+				../common/src/ByteBufferUtils.cpp ../common/src/ClientSessionData.cpp ../common/src/SoundPlayer.cpp
 OBJS 		= $(SRCS:.c=.o)
 TARGET		= mc_client.out
 

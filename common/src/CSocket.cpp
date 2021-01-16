@@ -42,7 +42,7 @@ CSocket::CSocket(int port)
 
 	Init();
 
-	servAddr.sin_addr.s_addr = INADDR_ANY;
+	servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	// Forcefully attaching socket to the port 
 	if (bind(socketFd, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
@@ -50,7 +50,7 @@ CSocket::CSocket(int port)
 		handle_fatal_error("Unable to bind the server socket");
 	}
 
-	if (listen(socketFd, 3) < 0)
+	if (listen(socketFd, 5) < 0)
 	{
 		handle_fatal_error("Unable to listen to the server socket");
 	}
@@ -80,9 +80,8 @@ ClientSessionData* CSocket::AcceptConnection() const
 	{
 		char* ip = inet_ntoa(servAddr.sin_addr);
 		ClientSessionData* data = new ClientSessionData(socket_fd, ip);
-		return data;
+		return data;    UDPSocket* outUdpSocket;
 	}
-
 }
 
 bool CSocket::TryConnect()

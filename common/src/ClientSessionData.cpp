@@ -3,40 +3,26 @@
 ClientSessionData::~ClientSessionData()
 {
     close(fd);
-    delete inUdpSocket;
-    delete outUdpSocket;
+    delete udpSocket;
 }
 
-UDPSocket* ClientSessionData::GetUDP(UDPSocket::Type type) const
-{
-    if (type == UDPSocket::IN)
-    {
-        return inUdpSocket;
-    }
-    else if (type == UDPSocket::OUT)
-    {
-        return outUdpSocket;
-    }
-    else
-    {
-        return nullptr;
-    }
-}
 
 ClientSessionData::ClientSessionData(int fd, char* ip)
 {
     this->fd = fd;
     this->ip = ip;
     this->owner = nullptr;
-    this->inUdpSocket = new UDPSocket(ip, 5051, UDPSocket::IN);
-    this->outUdpSocket = new UDPSocket(ip, 5051, UDPSocket::OUT);
+    UDPSocket *sock = new UDPSocket(ip, 0);
+    int port = sock->GetPort();
+    delete sock;
+    udpSocket = new UDPSocket(ip, port);
 }
 
 void ClientSessionData::UserLogged(UserData* owner)
 {
     if (this->owner != nullptr)
     {
-        delete owner;
+        delete this->owner;
 
     }
     this->owner = owner;

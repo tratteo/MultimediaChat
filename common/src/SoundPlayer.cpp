@@ -14,6 +14,8 @@ SoundPlayer::~SoundPlayer()
 
 void SoundPlayer::Init()
 {
+	channels = 2;
+	rate = 44100;
 	/* Open the PCM device in playback mode */
 	if (pcm = snd_pcm_open(&pcm_handle, PCM_DEVICE, SND_PCM_STREAM_PLAYBACK, 0) < 0)
 		printf("ERROR: Can't open \"%s\" PCM device. %s\n", PCM_DEVICE, snd_strerror(pcm));
@@ -48,17 +50,10 @@ void SoundPlayer::Init()
 	printf("PCM state: %s\n", snd_pcm_state_name(snd_pcm_state(pcm_handle)));
 
 	snd_pcm_hw_params_get_channels(params, &tmp);
-	printf("channels: %i ", tmp);
 
-	if (tmp == 1)
-		printf("(mono)\n");
-	else if (tmp == 2)
-		printf("(stereo)\n");
 
 	snd_pcm_hw_params_get_rate(params, &tmp, 0);
-	printf("rate: %d bps\n", tmp);
 
-	printf("seconds: %d\n", seconds);
 
 	/* Allocate buffer to hold single period */
 	snd_pcm_hw_params_get_period_size(params, &frames, 0);
@@ -71,7 +66,7 @@ void SoundPlayer::Init()
 
 void SoundPlayer::PlaySound()
 {
-	std::ifstream in(BUFFER_FILE, std::ifstream::in);
+	std::ifstream in(RECEIVED_FILE, std::ifstream::in);
 
 	while (!in.eof())
 	{
@@ -79,7 +74,7 @@ void SoundPlayer::PlaySound()
 
 		if (pcm = snd_pcm_writei(pcm_handle, buff, frames) == -EPIPE) 
 		{
-			printf("XRUN.\n");
+			//printf("XRUN.\n");
 			snd_pcm_prepare(pcm_handle);
 		}
 		else if (pcm < 0) 

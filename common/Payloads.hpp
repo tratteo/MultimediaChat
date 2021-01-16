@@ -13,8 +13,8 @@
 #define	PAYLOAD_OFFLINE_USR 8
 #define PAYLOAD_AUDIO_HEADER 9
 #define PAYLOAD_ACK 10
+#define PAYLOAD_DED_DGRAM_PORT 11
 
-#define DGRAM_AUDIO_PACKET 10
 
 class Payload
 {
@@ -84,6 +84,19 @@ class AudioMessageHeaderPayload : public Payload
 	inline std::string To() const { return to; }
 	inline int Segments() const { return segments; }
 	inline int TotalLength() const { return messageLength; }
+};
+
+class DgramPortPayload : public Payload
+{
+	private:
+	int port;
+
+	public:
+	void Create(int port);
+	void Deserialize(char* payload);
+	char* Serialize() const;
+	std::string ToString() const;
+	inline int Port() const { return port; }
 };
 
 //class DgramAudioPayload : public Payload

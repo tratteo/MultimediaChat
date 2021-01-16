@@ -19,19 +19,19 @@ void ExitWrapper(int code);
 void LoginRoutine();
 void ReceiveDaemon();
 void SendAudio(std::string dest);
-
+int udpPort;
 bool logged = false;
 bool shutDown = false;
 CSocket* clientSocket;
 UDPSocket* inUdpSock;
-UDPSocket* outUdpSock;
+SoundPlayer *player;
 
 std::thread audioRecvThread;
 std::thread loginThread;
 std::string username;
 std::list<bool*> acks;
 uint8_t lastReceived;
-
+char* serv_ip;
 
 int main(int argv, char** argc)
 {
@@ -44,29 +44,36 @@ int main(int argv, char** argc)
 	signal(SIGKILL, CloseService);
 	signal(SIGTERM, CloseService);
 
+	serv_ip = argc[1];
+
 	std::cout << "Multimedia Chat Client" << std::endl;
 
-	clientSocket = new CSocket(argc[1], 8080);
-	inUdpSock = new UDPSocket(argc[1], 5051, UDPSocket::IN);
-	outUdpSock = new UDPSocket(argc[1], 5051, UDPSocket::OUT);
+	player = new SoundPlayer();
+	clientSocket = new CSocket(serv_ip, 8080);
+
+	//Horrible workaround :-)
+	UDPSocket *sock = new UDPSocket(serv_ip, 0);
+    int port = sock->GetPort();
+    delete sock;
+    inUdpSock = new UDPSocket(serv_ip, port);
+
 
 	if(!clientSocket->TryConnect()) exit(EXIT_FAILURE);
 
 	std::thread daemon(&ReceiveDaemon);
 	daemon.detach();
 
-	loginThread = std::thread(&LoginRoutine);
-	loginThread.join();
+	LoginRoutine();
 
 	std::cout << "Asking for login..." << std::endl;
 
 	while (!logged)
 	{
-
+		;
 	}
-
 	while (true)
 	{
+	
 		std::cout << "1. Write message\n2. Register\n0. Bye bye" << std::endl;
 		std::string buf;
 		int choice = 0;
@@ -210,8 +217,9 @@ void ReceiveDaemon()
 					audioRecvThread.detach();
 
 					//TODO Send ack
-					packet.CreateTrivial(PAYLOAD_ACK);
-					Send(&packet, clientSocket->GetFd());
+					/* packet.CreateTrivial(PAYLOAD_ACK);
+					Send(&packet, clientSocket->GetFd()); */
+					break;
 				}
 				case PAYLOAD_ACK:
 				{
@@ -221,6 +229,24 @@ void ReceiveDaemon()
 						*ack = true;
 					}
 					acks.clear();
+					break;
+				}
+				case PAYLOAD_DED_DGRAM_PORT:
+				{
+					//TODO create udp towards the correct port
+					Packet packet;
+					packet.FromByteBuf(buf);
+					DgramPortPayload portPayload;
+					portPayload.Deserialize(packet.GetData());
+					std::cout<<"The server udp is on "<<portPayload.ToString()<<std::endl;
+					udpPort = portPayload.Port();
+
+
+					//send the port to the server
+					portPayload.Create(inUdpSock->GetPort());
+					packet.FromData(PAYLOAD_DED_DGRAM_PORT, portPayload.Serialize(), portPayload.Size());
+					Send(&packet, clientSocket->GetFd());
+
 					break;
 				}
 			}
@@ -255,11 +281,12 @@ void UDPReceive(AudioMessageHeaderPayload header)
 	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
 	int lengths[header.Segments()] = { 0 };
 	int i = 1, received = 0;
+	//std::cout<<"Receiving: "<<std::endl;
 	while (i <= header.Segments())
 	{
-		received = Read(buf, DGRAM_PACKET_SIZE + sizeof(int), inUdpSock->GetFd());
+		received = read(inUdpSock->GetFd(),buf, DGRAM_PACKET_SIZE + sizeof(int) );
 		int index = ReadUInt(buf);
-		std::cout << "Received seg: " << index << std::endl;
+		//std::cout << "Received seg: " << index << std::endl;
 		if (received > 0)
 		{
 			tot += received;
@@ -270,19 +297,24 @@ void UDPReceive(AudioMessageHeaderPayload header)
 		memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
 		memset(&buf, 0, DGRAM_PACKET_SIZE + sizeof(int));
 	}
-	std::cout << "TOT: " << tot << "Packts: " << packets << std::endl;
+    std::cout << "Bytes: " << tot << ", packets: " << packets << std::endl;
 	std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
 	for (int i = 0; i < header.Segments(); i++)
 	{
 		out.write(matrix[i], lengths[i]);
 	}
 	out.close();
+
+	player->PlaySound();
+	std::cout<<"Receive thread ended"<<std::endl;
 }
 
 void ExitWrapper(int code)
 {
 	shutDown = true;
+	delete player;
 	delete clientSocket;
+	delete inUdpSock;
 	exit(code);
 }
 
@@ -326,11 +358,15 @@ void SendAudio(std::string dest)
 		std::cout<<"Invalid dest for audio"<<std::endl;
 		return;
 	}
-	usleep(1000000);
+	usleep(25000);
 	int packetsSent = 0;
 	int totalSent = 0;
 	int index = 0;
 	std::cout<<"Trasmitting data.."<<std::endl;
+	struct sockaddr_in addr;
+	addr.sin_port = htons(udpPort);
+	addr.sin_addr.s_addr = inet_addr(serv_ip);
+	addr.sin_family = AF_INET;
 	while (!file.eof())
 	{
 		PutUInt(buffer, index);
@@ -341,7 +377,8 @@ void SendAudio(std::string dest)
 		//Packet packet;
 		//packet.FromData(DGRAM_AUDIO_PACKET, buffer, DGRAM_PACKET_SIZE + sizeof(int));
 
-		int sent = WriteTo(buffer, bytesRead + sizeof(int), outUdpSock->GetFd(), outUdpSock->GetSockAddr());
+		//int sent = WriteTo(buffer, bytesRead + sizeof(int), inUdpSock->GetFd(), &addr);
+		int sent = sendto(inUdpSock->GetFd(), buffer, bytesRead+ sizeof(int), MSG_CONFIRM, (struct sockaddr*)&addr, sizeof(addr));
 		//int sent = Write(buffer, bytesRead + sizeof(int), udpSocket);
 		//int sent = sendto(sock, buffer, s, 0, (const struct sockaddr*)&servaddr, sizeof(servaddr));
 		if (sent == -1)

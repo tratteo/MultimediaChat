@@ -31,7 +31,6 @@ class DataBaseHandler
 	void RegisterUser(UserData* user);
 	bool IsUserRegistered(std::string username);
 	private:
-	std::mutex mutex;
 	std::list<ClientSessionData*> connectedUsers;
 	std::list<UserData*> registeredUsers;
 };
