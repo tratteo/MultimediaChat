@@ -26,6 +26,7 @@ CSocket* clientSocket;
 UDPSocket* inUdpSock;
 SoundPlayer *player;
 
+std::thread receiveDaemon;
 std::thread audioRecvThread;
 std::thread loginThread;
 std::string username;
@@ -60,8 +61,8 @@ int main(int argv, char** argc)
 
 	if(!clientSocket->TryConnect()) exit(EXIT_FAILURE);
 
-	std::thread daemon(&ReceiveDaemon);
-	daemon.detach();
+	receiveDaemon = std::thread(&ReceiveDaemon);
+/* 	receiveDaemon.detach(); */
 
 	LoginRoutine();
 
@@ -73,7 +74,6 @@ int main(int argv, char** argc)
 	}
 	while (true)
 	{
-	
 		std::cout << "1. Write message\n2. Register\n0. Bye bye" << std::endl;
 		std::string buf;
 		int choice = 0;
@@ -149,6 +149,8 @@ void ReceiveDaemon()
 {
 	char buf[BUF_SIZE] = { 0 };
 	int bytesRead;
+	int flags = fcntl(clientSocket->GetFd(), F_GETFL, 0);
+	fcntl(clientSocket->GetFd(), F_SETFL, flags | O_NONBLOCK);
 	while (!shutDown)
 	{
 		bytesRead = Read(buf, BUF_SIZE, clientSocket->GetFd());
@@ -312,9 +314,19 @@ void UDPReceive(AudioMessageHeaderPayload header)
 void ExitWrapper(int code)
 {
 	shutDown = true;
+	receiveDaemon.join();
+	if(loginThread.joinable())
+	{
+		loginThread.join();
+	}
+	if(audioRecvThread.joinable())
+	{
+		audioRecvThread.join();
+	}
 	delete player;
 	delete clientSocket;
 	delete inUdpSock;
+
 	exit(code);
 }
 
