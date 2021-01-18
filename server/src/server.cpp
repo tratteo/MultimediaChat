@@ -31,7 +31,8 @@ int main()
         {
             std::cout << "New connection accepted, handling..." << std::endl;
             ClientHandler *handler = new ClientHandler(data, dataHandler, OnHandlerDisconnect);
-            handler->HandleConnection();
+            std::thread([&](){handler->HandleConnection();}).detach();
+            //handler->HandleConnection();
             handlers.push_front(handler);
             dataHandler->UserConnected(data);
         }

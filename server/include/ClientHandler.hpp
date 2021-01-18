@@ -35,7 +35,6 @@ class ClientHandler
     DataBaseHandler *dataHandler;
     bool shutdownReq = false;
     bool closedLocal = true;
-    std::thread clientThread;
     std::thread udpThread;
     void ( *OnDisconnect )(ClientHandler*);
     void Loop();

@@ -10,7 +10,7 @@ CSocket::CSocket(char* server_ip, int port)
 	Init();
 
 	// Convert IPv4 and IPv6 addresses from text to binary form, if the conversion fails, the ip format is not correct
-	if (inet_pton(AF_INET, serverIp, &servAddr.sin_addr) <= 0)
+	if (inet_pton(AF_INET, server_ip, &servAddr.sin_addr) <= 0)
 	{
 		handle_error("Invalid address/ Address not supported");
 	}

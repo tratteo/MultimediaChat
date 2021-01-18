@@ -1,9 +1,8 @@
 #include "../UDPSocket.hpp"
 
-UDPSocket::UDPSocket(char* ip, int port)
+UDPSocket::UDPSocket(int port)
 {
 	this->port = port;
-	this->ip = ip;
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
 	{
@@ -12,13 +11,8 @@ UDPSocket::UDPSocket(char* ip, int port)
 
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	//servAddr.sin_addr.s_addr = inet_addr(ip);
 	servAddr.sin_port = htons(port);
-	// Convert IPv4 and IPv6 addresses from text to binary form, if the conversion fails, the ip format is not correct
-	/*if (inet_pton(AF_INET, ip, &servAddr.sin_addr) <= 0)
-	{
-		handle_error("Invalid address/ Address not supported");
-	}*/
+
 	int opt = 1;
 	if (setsockopt(fd ,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt)) == -1) 	
 	{
@@ -45,21 +39,11 @@ UDPSocket::UDPSocket(char* ip, int port)
 			this->port = addr.sin_port;
 		}		
 	}
-/* 	servAddr.sin_addr.s_addr = inet_addr(ip);
-	if (connect(fd, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
-	{
-		handle_error("Connection Failed");
-	} */
-}
 
-struct sockaddr_in UDPSocket::GetSockAddr()
-{
-	struct sockaddr_in addr;
-	addr.sin_port = 8080;
-	addr.sin_addr.s_addr = inet_addr(ip);
-	return addr;
+	// Set the file descriptor as non blocking
+	int flags = fcntl(fd, F_GETFL, 0);
+	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
-
 UDPSocket::~UDPSocket()
 {
 	close(fd);

@@ -45,9 +45,6 @@ void SoundPlayer::Init()
 		printf("ERROR: Can't set harware parameters. %s\n", snd_strerror(pcm));
 
 	/* Resume information */
-	printf("PCM name: '%s'\n", snd_pcm_name(pcm_handle));
-
-	printf("PCM state: %s\n", snd_pcm_state_name(snd_pcm_state(pcm_handle)));
 
 	snd_pcm_hw_params_get_channels(params, &tmp);
 
@@ -62,6 +59,8 @@ void SoundPlayer::Init()
 	buff = new char[buff_size];
 
 	snd_pcm_hw_params_get_period_time(params, &tmp, NULL);
+
+	std::cout<<"Player status: active"<<std::endl;
 }
 
 void SoundPlayer::PlaySound()

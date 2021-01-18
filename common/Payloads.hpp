@@ -14,6 +14,7 @@
 #define PAYLOAD_AUDIO_HEADER 9
 #define PAYLOAD_ACK 10
 #define PAYLOAD_DED_DGRAM_PORT 11
+#define PAYLOAD_USER 12
 
 
 class Payload
@@ -99,6 +100,19 @@ class DgramPortPayload : public Payload
 	inline int Port() const { return port; }
 };
 
+class UserPayload : public Payload
+{
+	private:
+	int usernameLen;
+	std::string username;
+
+	public:
+	void Create(std::string username);
+	void Deserialize(char* payload);
+	char* Serialize() const;
+	std::string ToString() const;
+	inline std::string Username() const { return username; }
+};
 //class DgramAudioPayload : public Payload
 //{
 //	private:

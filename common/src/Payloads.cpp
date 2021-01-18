@@ -228,18 +228,40 @@ std::string DgramPortPayload::ToString() const
 	return "Port: " + std::to_string(port);
 }
 
+void UserPayload::Create(std::string username)
+{
+	this->username = username;
+	this->usernameLen = username.length();
+	Payload::Create(sizeof(int) + usernameLen);
+}
 
-//
-//void DgramAudioPayload::Create(int index)
-//{
-//	this->index = index;
-//	Payload::Create(sizeof(int));
-//}
-//void DgramAudioPayload::Deserialize(char* payload)
-//{
-//	int offset = 0;
-//	index = ReadUInt(payload + offset);
-//	offset += sizeof(int);
-//}
-//char* DgramAudioPayload::Serialize() const;
-//std::string DgramAudioPayload::ToString() const;
+void UserPayload::Deserialize(char* payload)
+{
+	int offset = 0x0;
+	usernameLen = ReadUInt(payload + offset);
+	offset += sizeof(int);
+
+	username = ReadString(payload + offset, usernameLen);
+	offset += usernameLen;
+
+	Payload::Create(sizeof(int) + usernameLen);
+}
+
+char* UserPayload::Serialize() const
+{
+	char *buffer = new char[size];
+	int offset = 0x0;
+
+	PutUInt(buffer + offset, usernameLen);
+	offset += sizeof(int);
+
+	PutString(buffer + offset, username);
+	offset += usernameLen;
+
+	return buffer;
+}
+
+std::string UserPayload::ToString() const
+{
+	return username;
+}

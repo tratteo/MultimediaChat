@@ -29,9 +29,13 @@ void ClientHandler::CloseConnection()
         }
         catch (std::exception e)
         {
-
         }
+/*         if(clientThread.joinable())
+        {
+            clientThread.join();
+        } */
     }
+    
     if (sessionData->GetOwner() != nullptr)
     {
         std::cout << "User " << sessionData->GetOwner()->GetUsername() << " disconnected" << std::endl;
@@ -41,22 +45,23 @@ void ClientHandler::CloseConnection()
         std::cout << "Connection " << sessionData->GetIp() << " disconnected without logging in" << std::endl;
     }
 
+    if(udpThread.joinable())
+    {
+        udpThread.join();
+    }
+
     OnDisconnect(this);
     dataHandler->UserDisconnected(sessionData);
 }
 
 void ClientHandler::UserLogged()
 {
-    std::thread([&]()
-    {
-        usleep(100000);
-        Packet packet;
-        DgramPortPayload portPayload;
-        portPayload.Create(sessionData->GetUdp()->GetPort());
-        packet.FromData(PAYLOAD_DED_DGRAM_PORT, portPayload.Serialize(), portPayload.Size());
-        Send(&packet, sessionData->GetFd());    
-    }).detach();
-    //send the random port to the client
+    usleep(100000);
+    Packet packet;
+    DgramPortPayload portPayload;
+    portPayload.Create(sessionData->GetUdp()->GetPort());
+    packet.FromData(PAYLOAD_DED_DGRAM_PORT, portPayload.Serialize(), portPayload.Size());
+    Send(&packet, sessionData->GetFd());    
     
 }
 
@@ -74,8 +79,7 @@ void ClientHandler::Loop()
                 case PAYLOAD_DISCONNECT:
                 {
                     closedLocal = false;
-                    delete this;
-                    break;
+                    return;
                 }
                 case PAYLOAD_CREDENTIALS:
                 {
@@ -92,7 +96,6 @@ void ClientHandler::Loop()
                         packet.CreateTrivial(PAYLOAD_REGISTERED);
                         Send(&packet, sessionData->GetFd());
                         UserLogged();
-                        //TODO send udp stats
                     }
                     else
                     {
@@ -105,13 +108,10 @@ void ClientHandler::Loop()
                                 std::cout << credentials.Username() << " has logged in"<< std::endl;
                                 Send(&packet, sessionData->GetFd());
                                 sessionData->UserLogged(data);
-                                //TODO send udp stats
                                 UserLogged();
-                                //TODO logged in
                             }
                             else
                             {
-                                //TODO bad credentials
                                 packet.CreateTrivial(PAYLOAD_INVALID_CREDENTIALS);
                                 Send(&packet, sessionData->GetFd());
                             }
@@ -154,9 +154,6 @@ void ClientHandler::Loop()
                 }
                 case PAYLOAD_AUDIO_HEADER:
                 {
-                    //std::cout<<"Received audio header"<<std::endl;
-                    //TODO send ack and prepare to receive udp
-                    //TODO prepare client for receiving packets
                     Packet packet;
                     packet.FromByteBuf(buf);
                     AudioMessageHeaderPayload vmhPayload;
@@ -168,13 +165,9 @@ void ClientHandler::Loop()
                         ClientSessionData *destData = dataHandler->GetUserSession(vmhPayload.To());
                         if(destData != nullptr)
                         {                      
-                            std::thread audioRecvThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
-                            audioRecvThread.detach();
-                            //std::cout<<"Sending ack to client"<<std::endl;
+                            udpThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
                             packet.CreateTrivial(PAYLOAD_ACK);
-                            bool res = Send(&packet, sessionData->GetFd());
-
-      
+                            bool res = Send(&packet, sessionData->GetFd());      
                         }
                         else
                         {
@@ -193,12 +186,11 @@ void ClientHandler::Loop()
                 }
                 case PAYLOAD_ACK:
                 {
-                    // Notify all intereset acks
+                    // Notify all interested acks
                     for(auto &ack : acks)
 					{
 						*ack = true;
 					}
-					acks.clear();
 					break;
                 }
                 case PAYLOAD_DED_DGRAM_PORT:
@@ -207,8 +199,34 @@ void ClientHandler::Loop()
                     packet.FromByteBuf(buf);
                     DgramPortPayload portPayload;
                     portPayload.Deserialize(packet.GetData());
-                    std::cout<<"The client udp is on "<<portPayload.ToString()<<std::endl;
+                    //std::cout<<"The client udp is on "<<portPayload.ToString()<<std::endl;
                     sessionData->udpPort = portPayload.Port();
+                    break;
+                }
+                case PAYLOAD_USER:
+                {
+                    Packet packet;
+                    UserPayload user;
+                    packet.FromByteBuf(buf);
+                    user.Deserialize(packet.GetData());
+                    if(dataHandler->IsUserRegistered(user.Username()))
+                    {
+                        if(dataHandler->GetUserSession(user.Username()) != nullptr)
+                        {
+                            packet.CreateTrivial(PAYLOAD_ACK);
+                            Send(&packet, sessionData->GetFd());
+                        }
+                        else
+                        {
+                            packet.CreateTrivial(PAYLOAD_OFFLINE_USR);
+                            Send(&packet, sessionData->GetFd());
+                        }
+                    }
+                    else
+                    {
+                        packet.CreateTrivial(PAYLOAD_INEXISTENT_DEST);
+                        Send(&packet, sessionData->GetFd());
+                    }
                     break;
                 }
                 default:
@@ -218,11 +236,10 @@ void ClientHandler::Loop()
         else
         {
             std::cout << "Client crashed " << std::endl;
-            shutdownReq = true;
+            delete this;
         }
         memset(&buf, 0, BUF_SIZE);
     }   
-
 }
 
 void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
@@ -233,21 +250,20 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
     char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
     int lengths[header.Segments()] = { 0 };
     int i = 1, received = 0;
-    while (i <= header.Segments())
+    
+    while (i <= header.Segments() && !shutdownReq)
     {
-        //received = Read(buf, DGRAM_PACKET_SIZE + sizeof(int), sessionData->GetUdp()->GetFd());
         received = read(sessionData->GetUdp()->GetFd(), buf, DGRAM_PACKET_SIZE + sizeof(int));
-        int index = ReadUInt(buf);
-        //std::cout << "Received seg: " << index << std::endl;
         if (received > 0)
         {
+            int index = ReadUInt(buf);
             tot += received;
             packets++;
             i++;
+            lengths[index] = received - sizeof(int);
+            memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
+            memset(&buf, 0, DGRAM_PACKET_SIZE + sizeof(int));
         }
-        lengths[index] = received - sizeof(int);
-        memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
-        memset(&buf, 0, DGRAM_PACKET_SIZE + sizeof(int));
     }
     std::cout << "Bytes: " << tot << ", packets: " << packets << std::endl;
     std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
@@ -259,13 +275,8 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
 
     Packet packet;
     ClientSessionData* destData = dataHandler->GetUserSession(header.To());
-    if(destData != nullptr)
+    if(destData != nullptr && !shutdownReq)
     {
-        //TODO user is online, forward the message
-        //TODO send header
-        //wait for ack
-        //start trasmission
-
         packet.FromData(PAYLOAD_AUDIO_HEADER, header.Serialize(), header.Size());
         Send(&packet, destData->GetFd());
 /* 
@@ -288,9 +299,12 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         addr.sin_family = AF_INET;
         addr.sin_port = htons(destData->udpPort);
         addr.sin_addr.s_addr = inet_addr(destData->GetIp());
-        //std::cout<<"Sending to port: "<<addr.sin_port<<std::endl;
         while (!file.eof())
         {
+            if(shutdownReq)
+            {
+                break;
+            }
             PutUInt(buffer, index);
             file.read(buffer + sizeof(int), DGRAM_PACKET_SIZE);
             std::streamsize bytesRead = file.gcount();
@@ -312,6 +326,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
 
 void ClientHandler::HandleConnection()
 {
-    clientThread = std::thread(&ClientHandler::Loop, this);
-    clientThread.detach();
+    Loop();
+    delete this;
+    return;
 }
