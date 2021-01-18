@@ -10,8 +10,15 @@ ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *da
 
 ClientHandler::~ClientHandler()
 {
-    CloseConnection();
-    delete sessionData;
+    if(!shutdownReq)
+    {
+        CloseConnection();
+    }
+    if(sessionData != nullptr)
+    {    
+        delete sessionData;
+        sessionData = nullptr;
+    }
 }
 
 void ClientHandler::CloseConnection()
@@ -30,12 +37,8 @@ void ClientHandler::CloseConnection()
         catch (std::exception e)
         {
         }
-/*         if(clientThread.joinable())
-        {
-            clientThread.join();
-        } */
     }
-    
+
     if (sessionData->GetOwner() != nullptr)
     {
         std::cout << "User " << sessionData->GetOwner()->GetUsername() << " disconnected" << std::endl;
@@ -49,20 +52,19 @@ void ClientHandler::CloseConnection()
     {
         udpThread.join();
     }
-
-    OnDisconnect(this);
     dataHandler->UserDisconnected(sessionData);
+    //OnDisconnect(this);
 }
 
-void ClientHandler::UserLogged()
+void ClientHandler::NotifyUDPPort()
 {
     usleep(100000);
     Packet packet;
-    DgramPortPayload portPayload;
-    portPayload.Create(sessionData->GetUdp()->GetPort());
-    packet.FromData(PAYLOAD_DED_DGRAM_PORT, portPayload.Serialize(), portPayload.Size());
+    DgramPortPayload portPayload = DgramPortPayload(sessionData->GetUdp()->GetPort());
+    char* temp = portPayload.Serialize();
+    packet.FromData(PAYLOAD_DED_DGRAM_PORT, temp, portPayload.Size());
     Send(&packet, sessionData->GetFd());    
-    
+    delete temp;
 }
 
 void ClientHandler::Loop()
@@ -83,10 +85,9 @@ void ClientHandler::Loop()
                 }
                 case PAYLOAD_CREDENTIALS:
                 {
-                    Packet packet;
-                    CredentialsPayload credentials;
-                    packet.FromByteBuf(buf);
-                    credentials.Deserialize(packet.GetData());
+                    Packet packet = Packet(buf);
+       
+                    CredentialsPayload credentials = CredentialsPayload(packet.GetData());
                     if (!dataHandler->IsUserRegistered(credentials.Username()))
                     {
                         UserData* user = new UserData(credentials.Username(), credentials.Password());
@@ -95,7 +96,7 @@ void ClientHandler::Loop()
                         std::cout << credentials.Username() << " has registered"<< std::endl;
                         packet.CreateTrivial(PAYLOAD_REGISTERED);
                         Send(&packet, sessionData->GetFd());
-                        UserLogged();
+                        NotifyUDPPort();
                     }
                     else
                     {
@@ -108,7 +109,7 @@ void ClientHandler::Loop()
                                 std::cout << credentials.Username() << " has logged in"<< std::endl;
                                 Send(&packet, sessionData->GetFd());
                                 sessionData->UserLogged(data);
-                                UserLogged();
+                                NotifyUDPPort();
                             }
                             else
                             {
@@ -124,10 +125,8 @@ void ClientHandler::Loop()
                 {
                     if (sessionData->IsLogged())
                     {
-                        Packet packet;
-                        packet.FromByteBuf(buf);
-                        MessagePayload message;
-                        message.Deserialize(packet.GetData());
+                        Packet packet = Packet(buf);
+                        MessagePayload message = MessagePayload(packet.GetData());
 
                         if(dataHandler->IsUserRegistered(message.To()))
                         {
@@ -154,10 +153,9 @@ void ClientHandler::Loop()
                 }
                 case PAYLOAD_AUDIO_HEADER:
                 {
-                    Packet packet;
-                    packet.FromByteBuf(buf);
-                    AudioMessageHeaderPayload vmhPayload;
-                    vmhPayload.Deserialize(packet.GetData());
+                    Packet packet = Packet(buf);
+                    AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
+
                     std::cout << vmhPayload.ToString() << std::endl;
 
                     if(dataHandler->IsUserRegistered(vmhPayload.To()))
@@ -195,20 +193,16 @@ void ClientHandler::Loop()
                 }
                 case PAYLOAD_DED_DGRAM_PORT:
                 {
-                    Packet packet;
-                    packet.FromByteBuf(buf);
-                    DgramPortPayload portPayload;
-                    portPayload.Deserialize(packet.GetData());
+                    Packet packet = Packet(buf);
+                    DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
                     //std::cout<<"The client udp is on "<<portPayload.ToString()<<std::endl;
                     sessionData->udpPort = portPayload.Port();
                     break;
                 }
                 case PAYLOAD_USER:
                 {
-                    Packet packet;
-                    UserPayload user;
-                    packet.FromByteBuf(buf);
-                    user.Deserialize(packet.GetData());
+                    Packet packet = Packet(buf);
+                    UserPayload user = UserPayload(packet.GetData());
                     if(dataHandler->IsUserRegistered(user.Username()))
                     {
                         if(dataHandler->GetUserSession(user.Username()) != nullptr)
@@ -277,9 +271,11 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
     ClientSessionData* destData = dataHandler->GetUserSession(header.To());
     if(destData != nullptr && !shutdownReq)
     {
-        packet.FromData(PAYLOAD_AUDIO_HEADER, header.Serialize(), header.Size());
+        char* temp = header.Serialize();
+        packet.FromData(PAYLOAD_AUDIO_HEADER, temp, header.Size());
         Send(&packet, destData->GetFd());
-/* 
+        delete temp;
+/*  
         bool ack = false;
         acks.push_back(&ack);
         while(!ack) usleep(200000); */
@@ -321,12 +317,13 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
 	    }
         std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;
         file.close();
+        delete buffer;
     }
 }
 
 void ClientHandler::HandleConnection()
 {
     Loop();
-    delete this;
+    CloseConnection();
     return;
 }

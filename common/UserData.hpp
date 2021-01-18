@@ -15,6 +15,7 @@ class UserData
     std::list<ChatData*> chats;
 
     public:
+    ~UserData();
     UserData();
     UserData(std::string username, std::string password);
     void FromCredentials(std::string username, std::string password);

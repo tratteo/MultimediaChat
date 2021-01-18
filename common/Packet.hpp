@@ -7,6 +7,7 @@ class Packet
 	public:
 	~Packet();
 	Packet();
+	Packet(char type);
 	Packet(char type, char* payload, int payloadLength);
 	Packet(char* packetByteBuf);
 

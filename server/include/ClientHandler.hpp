@@ -28,7 +28,7 @@ class ClientHandler
     void CloseConnection();
 
     private:
-    void UserLogged();
+    void NotifyUDPPort();
     std::list<bool*> acks;
     void UDPReceive(AudioMessageHeaderPayload amhPayload);
     ClientSessionData *sessionData;

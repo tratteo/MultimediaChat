@@ -3,9 +3,12 @@ CFLAGS 		= -std=c++11 -pthread
 LFLAGS		= -lasound
 INCLUDES 	= -I/include -I../common
 SRCDIR 		= src
-SRCS 		= $(SRCDIR)/client.cpp $(SRCDIR)/Client.cpp ../common/src/CSocket.cpp ../common/src/errhandler.cpp ../common/src/Payloads.cpp \
-				../common/src/NetworkHandler.cpp ../common/src/Packet.cpp ../common/src/SoundRegistrer.cpp ../common/src/UDPSocket.cpp \
-				../common/src/ByteBufferUtils.cpp ../common/src/ClientSessionData.cpp ../common/src/SoundPlayer.cpp
+CMMSRCDIR 	= ../common/src
+
+SRCS 		= 	$(SRCDIR)/client.cpp $(SRCDIR)/Client.cpp $(CMMSRCDIR)/CSocket.cpp $(CMMSRCDIR)/errhandler.cpp $(CMMSRCDIR)/Payloads.cpp \
+			  	$(CMMSRCDIR)/NetworkHandler.cpp $(CMMSRCDIR)/Packet.cpp $(CMMSRCDIR)/SoundRegistrer.cpp $(CMMSRCDIR)/UDPSocket.cpp \
+				$(CMMSRCDIR)/ByteBufferUtils.cpp $(CMMSRCDIR)/ClientSessionData.cpp $(CMMSRCDIR)/SoundPlayer.cpp $(CMMSRCDIR)/UserData.cpp
+
 OBJS 		= $(SRCS:.c=.o)
 TARGET		= mc_client.out
 

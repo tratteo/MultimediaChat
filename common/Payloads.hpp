@@ -40,6 +40,8 @@ class MessagePayload : public Payload
 	int messageLen;
 
 	public:
+	MessagePayload(char* payload);
+	MessagePayload(std::string from, std::string to, std::string message);
 	void Create(std::string from, std::string to, std::string message);
 	void Deserialize(char* payload);
 	char* Serialize() const;
@@ -58,6 +60,8 @@ class CredentialsPayload : public Payload
 	int passwordLen;
 
 	public:
+	CredentialsPayload(std::string username, std::string password);
+	CredentialsPayload(char* payload);
 	void Create(std::string username, std::string password);
 	void Deserialize(char* payload);
 	char* Serialize() const;
@@ -77,6 +81,8 @@ class AudioMessageHeaderPayload : public Payload
 	int messageLength;
 
 	public:
+	AudioMessageHeaderPayload(std::string from, std::string to, int segments, int messageLength);
+	AudioMessageHeaderPayload(char* payload);
 	void Create(std::string from, std::string to, int segments, int messageLength);
 	void Deserialize(char* payload);
 	char* Serialize() const;
@@ -93,6 +99,8 @@ class DgramPortPayload : public Payload
 	int port;
 
 	public:
+	DgramPortPayload(int port);
+	DgramPortPayload(char* payload);
 	void Create(int port);
 	void Deserialize(char* payload);
 	char* Serialize() const;
@@ -107,6 +115,8 @@ class UserPayload : public Payload
 	std::string username;
 
 	public:
+	UserPayload(std::string username);
+	UserPayload(char* payload);
 	void Create(std::string username);
 	void Deserialize(char* payload);
 	char* Serialize() const;

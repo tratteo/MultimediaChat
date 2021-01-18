@@ -5,6 +5,18 @@ UserData::UserData()
 
 }
 
+UserData::~UserData()
+{
+    for(auto &chat : chats)
+    {
+        if(chat != nullptr)
+        {
+            delete chat;
+            chat = nullptr;
+        }
+    }
+}
+
 UserData::UserData(std::string username, std::string password)
 {
     this->username = username;

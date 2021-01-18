@@ -14,6 +14,11 @@ Packet::Packet()
 
 }
 
+Packet::Packet(char type)
+{
+	CreateTrivial(type);
+}
+
 Packet::Packet(char type, char* payload, int payloadLength)
 {
 	FromData(type, payload, payloadLength);

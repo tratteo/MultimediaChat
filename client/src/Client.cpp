@@ -13,8 +13,7 @@ Client::Client(char* servIp)
 
 Client::~Client()
 {
-    Packet packet;
-	packet.CreateTrivial(PAYLOAD_DISCONNECT);
+    Packet packet = Packet(PAYLOAD_DISCONNECT);
 	Send(&packet, clientSocket->GetFd());
 
     shutDown = true;
@@ -42,13 +41,13 @@ void Client::LoginRoutine()
 	std::cout << "Password: ";
 	std::getline(std::cin, password);
 
-	CredentialsPayload credentials;
-	credentials.Create(username, password);
+	CredentialsPayload credentials = CredentialsPayload(username, password);
 	
 	Packet packet;
-	packet.FromData(PAYLOAD_CREDENTIALS, credentials.Serialize(), credentials.Size());
-
+	char* temp = credentials.Serialize();
+	packet.FromData(PAYLOAD_CREDENTIALS, temp, credentials.Size());
 	Send(&packet, clientSocket->GetFd());
+	delete temp;
 }
 
 void Client::ReceiveAudio(AudioMessageHeaderPayload header)
@@ -59,7 +58,6 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
 	int lengths[header.Segments()] = { 0 };
 	int i = 1, received = 0;
-
 	while (i <= header.Segments() && !shutDown)
 	{
 		received = read(udpSocket->GetFd(),buf, DGRAM_PACKET_SIZE + sizeof(int) );
@@ -93,6 +91,7 @@ void Client::ReceiveDaemon()
 {
     char buf[BUF_SIZE] = { 0 };
 	int bytesRead;
+	int flags = fcntl(clientSocket->GetFd(), F_GETFL, 0); fcntl(clientSocket->GetFd(), F_SETFL, flags | O_NONBLOCK);
 	while (!shutDown)
 	{
 		bytesRead = Read(buf, BUF_SIZE, clientSocket->GetFd());
@@ -133,10 +132,8 @@ void Client::ReceiveDaemon()
 				}
 				case PAYLOAD_MSG:
 				{
-					Packet packet;
-					packet.FromByteBuf(buf);
-					MessagePayload message;
-					message.Deserialize(packet.GetData());
+					Packet packet = Packet(buf);
+					MessagePayload message = MessagePayload(packet.GetData());
 					std::cout << message.From() << " whispers to you: " << message.Message() << std::endl;
 					break;
 				}
@@ -153,10 +150,8 @@ void Client::ReceiveDaemon()
 				case PAYLOAD_AUDIO_HEADER:
 				{
 					//TODO prepare client for receiving packets
-					Packet packet;
-					packet.FromByteBuf(buf);
-					AudioMessageHeaderPayload vmhPayload;
-					vmhPayload.Deserialize(packet.GetData());
+					Packet packet = Packet(buf);
+					AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
 					std::cout << vmhPayload.ToString() << std::endl;
 
 					audioRecvThread = std::thread(&Client::ReceiveAudio, this, vmhPayload);
@@ -179,19 +174,16 @@ void Client::ReceiveDaemon()
 				case PAYLOAD_DED_DGRAM_PORT:
 				{
 					//TODO create udp towards the correct port
-					Packet packet;
-					packet.FromByteBuf(buf);
-					DgramPortPayload portPayload;
-					portPayload.Deserialize(packet.GetData());
+					Packet packet = Packet(buf);
+					DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
 					//std::cout<<"The server udp is on "<<portPayload.ToString()<<std::endl;
 					udpPort = portPayload.Port();
-
-
 					//send the port to the server
-					portPayload.Create(udpSocket->GetPort());
-					packet.FromData(PAYLOAD_DED_DGRAM_PORT, portPayload.Serialize(), portPayload.Size());
+					portPayload = DgramPortPayload(udpSocket->GetPort());
+					char* temp = portPayload.Serialize();
+					packet.FromData(PAYLOAD_DED_DGRAM_PORT, temp, portPayload.Size());
 					Send(&packet, clientSocket->GetFd());
-
+					delete temp;
 					break;
 				}
 			}
@@ -214,11 +206,12 @@ void Client::SendAudio(std::string dest)
 
 	//Handshake
 	Packet packet;
-	AudioMessageHeaderPayload amhPayload;
-	amhPayload.Create(username, dest, segs, size);
+	AudioMessageHeaderPayload amhPayload = AudioMessageHeaderPayload(username, dest, segs, size);
 	std::cout<<"Audio: "<<amhPayload.ToString()<<std::endl;
-	packet.FromData(PAYLOAD_AUDIO_HEADER, amhPayload.Serialize(), amhPayload.Size());
+	char* temp = amhPayload.Serialize();
+	packet.FromData(PAYLOAD_AUDIO_HEADER, temp, amhPayload.Size());
 	Send(&packet, clientSocket->GetFd());
+	delete temp;
 
 	char buf[BUF_SIZE] = { 0 };
 	int bytesRead = 0;
@@ -294,10 +287,11 @@ int Client::Run()
 		std::string buf;
 
 		std::getline(std::cin, buf);
-		UserPayload dest;
-		dest.Create(buf);
+		UserPayload dest = UserPayload(buf);
 		Packet packet;
-		packet.FromData(PAYLOAD_USER, dest.Serialize(), dest.Size());
+		char* temp = dest.Serialize();
+		packet.FromData(PAYLOAD_USER, temp, dest.Size());
+		delete temp;
 
 		uint8_t status = PAYLOAD_ACK;
 		bool ack = false;
@@ -345,12 +339,12 @@ int Client::Run()
 			}
 			else
 			{
-				MessagePayload messagePayload;
-				messagePayload.Create(username, currentDest, buf);
-				packet.FromData(PAYLOAD_MSG, messagePayload.Serialize(), messagePayload.Size());
+				MessagePayload messagePayload = MessagePayload(username, currentDest, buf);
+				char* temp = messagePayload.Serialize();
+				packet.FromData(PAYLOAD_MSG, temp, messagePayload.Size());
 				Send(&packet, clientSocket->GetFd());
+				delete temp;
 			}
 		}
-	
 	return EXIT_SUCCESS;
 }

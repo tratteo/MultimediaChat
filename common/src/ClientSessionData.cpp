@@ -3,7 +3,11 @@
 ClientSessionData::~ClientSessionData()
 {
     close(fd);
-    delete udpSocket;
+    if(udpSocket != nullptr)
+    {
+        delete udpSocket;
+        udpSocket = nullptr;
+    }
 }
 
 
@@ -26,7 +30,6 @@ void ClientSessionData::UserLogged(UserData* owner)
     if (this->owner != nullptr)
     {
         delete this->owner;
-
     }
     this->owner = owner;
     logged = true;

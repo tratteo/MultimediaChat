@@ -12,6 +12,7 @@ void OnHandlerDisconnect(ClientHandler* handler);
 DataBaseHandler* dataHandler;
 CSocket* servSocket;
 std::list<ClientHandler*> handlers;
+std::list<std::thread> clientThreads;
 
 int main()
 {
@@ -27,12 +28,11 @@ int main()
     while(true)
     {
         ClientSessionData *data; 
-        if((data=servSocket->AcceptConnection()) != nullptr)
+        if((data = servSocket->AcceptConnection()) != nullptr)
         {
             std::cout << "New connection accepted, handling..." << std::endl;
             ClientHandler *handler = new ClientHandler(data, dataHandler, OnHandlerDisconnect);
-            std::thread([&](){handler->HandleConnection();}).detach();
-            //handler->HandleConnection();
+            clientThreads.push_back(std::thread([&](){handler->HandleConnection();}));
             handlers.push_front(handler);
             dataHandler->UserConnected(data);
         }
@@ -46,12 +46,19 @@ void OnHandlerDisconnect(ClientHandler* handler)
 
 void CloseService(int signal)
 {
-    delete servSocket;
-    delete dataHandler;
+    dataHandler->SerializeDatabase();
+    for(auto &t : clientThreads)
+    {
+        if(t.joinable())
+        {
+            t.join();
+        }
+    }
     for (auto& h : handlers)
     {
         delete h;
     }
-
+    delete servSocket;
+    delete dataHandler;
     exit(EXIT_SUCCESS);
 }

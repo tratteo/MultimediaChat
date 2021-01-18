@@ -7,7 +7,15 @@ DataBaseHandler::DataBaseHandler()
 
 DataBaseHandler::~DataBaseHandler()
 {
-    SerializeDatabase();
+    //SerializeDatabase();
+    for(auto &usr : registeredUsers)
+    {
+        if(usr != nullptr)
+        {
+            delete usr;
+            usr = nullptr;
+        }
+    }
 }
 
 void DataBaseHandler::SerializeDatabase()
@@ -75,11 +83,9 @@ void DataBaseHandler::ParseDatabase()
                         std::string from = line.substr(0, i1);
                         std::string to = line.substr(i1 + 1, i2 - i1 - 1);
                         std::string msg = line.substr(i2 + 1, line.length() - i2 - 1);
-                        MessagePayload message;
+                        MessagePayload message = MessagePayload(from, to, msg);
                         //std::cout << "Adding message: " << from << "->"<<to<<": "<<msg << std::endl;
-                        message.Create(from, to, msg);
                         currentChat->AddMessage(message);
-
                     }
                 }
             }

@@ -4,17 +4,23 @@ Payload::Payload(int size)
 {
 	this->size = size;
 }
-
 Payload::Payload()
 {
 
 }
-
 void Payload::Create(int size)
 {
 	this->size = size;
 }
 
+MessagePayload::MessagePayload(char* payload)
+{
+	Deserialize(payload);
+}
+MessagePayload::MessagePayload(std::string from, std::string to, std::string message)
+{
+	Create(from, to, message);
+}
 void MessagePayload::Create(std::string from, std::string to, std::string message)
 {
 	this->from = from;
@@ -25,7 +31,6 @@ void MessagePayload::Create(std::string from, std::string to, std::string messag
 	this->messageLen = message.length();
 	Payload::Create(fromLen + toLen + messageLen + 3 * sizeof(int));
 }
-
 void MessagePayload::Deserialize(char* payload)
 {
 	int offset = 0;
@@ -49,7 +54,6 @@ void MessagePayload::Deserialize(char* payload)
 
 	Payload::Create(offset);
 }
-
 char* MessagePayload::Serialize() const
 {
 	char* buffer = new char[size];
@@ -76,13 +80,19 @@ char* MessagePayload::Serialize() const
 
 	return buffer;
 }
-
 std::string MessagePayload::ToString() const
 {
 	return from + ">" + to + ":" + message + "\n";
 }
 
-
+CredentialsPayload::CredentialsPayload(std::string username, std::string password)
+{
+	Create(username, password);
+}
+CredentialsPayload::CredentialsPayload(char* payload)
+{
+	Deserialize(payload);
+}
 void CredentialsPayload::Create(std::string username, std::string password)
 {
 	this->username = username;
@@ -91,7 +101,6 @@ void CredentialsPayload::Create(std::string username, std::string password)
 	this->passwordLen = password.length();
 	Payload::Create(usernameLen + passwordLen + 2 * sizeof(int));
 }
-
 void CredentialsPayload::Deserialize(char* payload)
 {
 	int offset = 0;
@@ -109,7 +118,6 @@ void CredentialsPayload::Deserialize(char* payload)
 
 	Payload::Create(offset);
 }
-
 char* CredentialsPayload::Serialize() const
 {
 	char* buffer = new char[size];
@@ -129,12 +137,19 @@ char* CredentialsPayload::Serialize() const
 
 	return buffer;
 }
-
 std::string CredentialsPayload::ToString() const
 {
 	return username + "-" + password + "\n";
 }
 
+AudioMessageHeaderPayload::AudioMessageHeaderPayload(std::string from, std::string to, int segments, int messageLength)
+{
+	Create(from, to, segments, messageLength);
+}
+AudioMessageHeaderPayload::AudioMessageHeaderPayload(char* payload)
+{
+	Deserialize(payload);
+}
 void AudioMessageHeaderPayload::Create(std::string from, std::string to, int segments, int messageLength)
 {
 	this->from = from;
@@ -201,7 +216,14 @@ std::string AudioMessageHeaderPayload::ToString() const
 	return from + ">" + to + ", Voice msg of segs: " + std::to_string(segments) + ", length: " + std::to_string(messageLength);
 }
 
-
+DgramPortPayload::DgramPortPayload(int port)
+{
+	Create(port);
+}
+DgramPortPayload::DgramPortPayload(char* payload)
+{
+	Deserialize(payload);
+}
 void DgramPortPayload::Create(int port)
 {
 	this->port = port;
@@ -228,13 +250,20 @@ std::string DgramPortPayload::ToString() const
 	return "Port: " + std::to_string(port);
 }
 
+UserPayload::UserPayload(std::string username)
+{
+	Create(username);
+}
+UserPayload::UserPayload(char* payload)
+{
+	Deserialize(payload);
+}
 void UserPayload::Create(std::string username)
 {
 	this->username = username;
 	this->usernameLen = username.length();
 	Payload::Create(sizeof(int) + usernameLen);
 }
-
 void UserPayload::Deserialize(char* payload)
 {
 	int offset = 0x0;
@@ -246,7 +275,6 @@ void UserPayload::Deserialize(char* payload)
 
 	Payload::Create(sizeof(int) + usernameLen);
 }
-
 char* UserPayload::Serialize() const
 {
 	char *buffer = new char[size];
@@ -260,7 +288,6 @@ char* UserPayload::Serialize() const
 
 	return buffer;
 }
-
 std::string UserPayload::ToString() const
 {
 	return username;
