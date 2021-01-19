@@ -60,7 +60,7 @@ void SoundPlayer::Init()
 
 	snd_pcm_hw_params_get_period_time(params, &tmp, NULL);
 
-	std::cout<<"Player status: active"<<std::endl;
+	//std::cout<<"Player status: active"<<std::endl;
 }
 
 void SoundPlayer::PlaySound()

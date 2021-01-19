@@ -50,6 +50,7 @@ SoundRegistrer::SoundRegistrer()
 
     /* We want to loop for 5 seconds */
     snd_pcm_hw_params_get_period_time(params, &val, &dir);
+    shouldStop = false;
 }
 
 

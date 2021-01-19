@@ -44,21 +44,28 @@ class Client
     void ReceiveAudio(AudioMessageHeaderPayload header);
     void ReceiveDaemon();
     void SendAudio(std::string dest);
+    void AppendToConsole(std::string line, bool inputRequest);
 
     struct pollfd polledFds[POLLED_SIZE];
-    std::thread loopThread;
+
+    std::string lastInWritten = "";
+    std::string username;
 	std::string currentDest;
+
+    uint8_t lastReceived;
+    char* serv_ip;
     int udpPort;
     bool logged = false;
     std::atomic<bool> shutDown;
+
     CSocket* clientSocket;
     UDPSocket* udpSocket;
 
+    std::thread loopThread;
     std::thread receiveDaemon;
     std::thread audioRecvThread;
     std::thread loginThread;
-    std::string username;
+
     std::list<bool*> acks;
-    uint8_t lastReceived;
-    char* serv_ip;
+
 };

@@ -28,12 +28,10 @@ Client::~Client()
 
 	if(loopThread.joinable())
 	{
-		//std::cerr<<"Joining loop"<<std::endl;
 		loopThread.join();
 	}
     if(receiveDaemon.joinable())
     {
-		//std::cerr<<"Joining receive"<<std::endl;
 	    receiveDaemon.join();
     }
 	if(loginThread.joinable())
@@ -43,7 +41,6 @@ Client::~Client()
 	}
 	if(audioRecvThread.joinable())
 	{
-		//std::cerr<<"Joining audio"<<std::endl;
 		audioRecvThread.join();
 	}
     delete clientSocket;
@@ -54,13 +51,9 @@ void Client::LoginRoutine()
 {
     std::string password;
 	std::cout << "Username: ";
-	std::flush(std::cout);
-	bool u = false;
-	bool p = false;
 	username = PollCinOnce(polledFds, POLLED_SIZE, STDIN_IDX, POLL_DELAY, [&](){return shutDown.load();});
 
 	std::cout << "Password: ";
-	std::flush(std::cout);
 	password = PollCinOnce(polledFds, POLLED_SIZE, STDIN_IDX, POLL_DELAY, [&](){return shutDown.load();});
 
 	CredentialsPayload credentials = CredentialsPayload(username, password);
@@ -94,8 +87,7 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
             memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
         }
     });
-	std::cout<<"Received audio: "<<header.ToString()<<std::endl;
-    //std::cout << "Bytes: " << tot << ", packets: " << packets << std::endl;
+	AppendToConsole("Received audio: " + header.ToString(), false);
 	std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
 	for (int i = 0; i < header.Segments(); i++)
 	{
@@ -107,6 +99,26 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	player->PlaySound();
 	delete player;
 	return;
+}
+
+void Client::AppendToConsole(std::string line, bool inputRequest)
+{
+	if(inputRequest)
+	{
+		lastInWritten = line;
+		std::flush(std::cout);
+		std::cout<<line<<std::endl<<"> ";
+	}
+	else
+	{
+		std::flush(std::cout);
+		std::cout<<std::endl<<line<<std::endl;
+		if(lastInWritten != "")
+		{
+			std::cout<<lastInWritten<<std::endl<<"> ";
+		}
+	}
+	std::flush(std::cout);
 }
 
 void Client::ReceiveDaemon()
@@ -122,7 +134,7 @@ void Client::ReceiveDaemon()
 			{
 				case PAYLOAD_DISCONNECT:
 				{
-					std::cout << "Oops, server went off :(" << std::endl;
+					AppendToConsole("Oops, server went off :(", false);
 					packet.Purge();
 					receiveDaemon.detach();
 					delete this;
@@ -132,7 +144,7 @@ void Client::ReceiveDaemon()
 				case PAYLOAD_INVALID_CREDENTIALS:
 				{
 					logged = false;
-					std::cout << "Invalid credentials, try again" << std::endl;
+					AppendToConsole("Invalid credentials, try again", false);
 					if (loginThread.joinable())
 					{
 						loginThread.join();
@@ -142,13 +154,13 @@ void Client::ReceiveDaemon()
 				}
 				case PAYLOAD_LOGGED_IN:
 				{
-					std::cout << "Login successful" << std::endl;
+					AppendToConsole("Login successful", false);
 					logged = true;
 					break;
 				}
 				case PAYLOAD_REGISTERED:
 				{
-					std::cout << "User was not present in the database, registration successfull" << std::endl;
+					AppendToConsole("User was not present in the database, registration successfull", false);
 					logged = true;
 					break;
 				}
@@ -156,25 +168,23 @@ void Client::ReceiveDaemon()
 				{
 					packet = Packet(buf);
 					MessagePayload message = MessagePayload(packet.GetData());
-					std::cout << message.From() << " whispers to you: " << message.Message() << std::endl;
+					AppendToConsole( message.From() + " > " + message.Message(), false);
 					break;
 				}
 				case PAYLOAD_INEXISTENT_DEST:
 				{
-					std::cout << "Are you sure the user you wrote to actually exists? Seems not to me" << std::endl;
+					AppendToConsole( "The user does not exists :-/", false);
 					break;
 				}
 				case PAYLOAD_OFFLINE_USR:
 				{
-					std::cout << "The user you tried to contact is offline" << std::endl;
+					AppendToConsole("The user you tried to contact is offline", false);
 					break;
 				}
 				case PAYLOAD_AUDIO_HEADER:
 				{
-					//TODO prepare client for receiving packets
 					packet = Packet(buf);
 					AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
-					//std::cout << vmhPayload.ToString() << std::endl;
 					if(audioRecvThread.joinable())
 					{
 						audioRecvThread.join();
@@ -185,7 +195,6 @@ void Client::ReceiveDaemon()
 				}
 				case PAYLOAD_ACK:
 				{
-					//std::cout<<"ACK"<<std::endl;
 					for(auto &ack : acks)
 					{
 						*ack = true;
@@ -194,12 +203,9 @@ void Client::ReceiveDaemon()
 				}
 				case PAYLOAD_DED_DGRAM_PORT:
 				{
-					//TODO create udp towards the correct port
 					packet = Packet(buf);
 					DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
-					//std::cout<<"The server udp is on "<<portPayload.ToString()<<std::endl;
 					udpPort = portPayload.Port();
-					//send the port to the server
 					portPayload = DgramPortPayload(udpSocket->GetPort());
 					char* temp = portPayload.Serialize();
 					packet.FromData(PAYLOAD_DED_DGRAM_PORT, temp, portPayload.Size());
@@ -230,7 +236,7 @@ void Client::SendAudio(std::string dest)
 	//Handshake
 	Packet packet;
 	AudioMessageHeaderPayload amhPayload = AudioMessageHeaderPayload(username, dest, segs, size);
-	std::cout<<"Audio: "<<amhPayload.ToString()<<std::endl;
+	AppendToConsole("Audio: " + amhPayload.ToString(), false);
 	char* temp = amhPayload.Serialize();
 	packet.FromData(PAYLOAD_AUDIO_HEADER, temp, amhPayload.Size());
 	Send(&packet, clientSocket->GetFd());
@@ -252,15 +258,14 @@ void Client::SendAudio(std::string dest)
 	}
 	if(stop) 
 	{
-		std::cout<<"Invalid dest for audio"<<std::endl;
+		AppendToConsole("Invalid dest for audio", false);
 		return;
 	}
-	std::cout<<"Ack received"<<std::endl;
 	usleep(25000);
 	int packetsSent = 0;
 	int totalSent = 0;
 	int index = 0;
-	std::cout<<"Sending audio..."<<std::endl;
+	AppendToConsole("Sending audio...", false);
 	struct sockaddr_in addr;
 	addr.sin_port = htons(udpPort);
 	addr.sin_addr.s_addr = inet_addr(serv_ip);
@@ -301,11 +306,9 @@ void Client::Loop()
         std::cerr<<"Unble to connect to server"<<std::endl;
         return;
     }
-    //Start the receive daemon thread
     receiveDaemon = std::thread(&Client::ReceiveDaemon, this);
 
     LoginRoutine();
-    //std::cout << "Asking for login..." << std::endl;
 
 	while (!logged)
 	{
@@ -313,11 +316,12 @@ void Client::Loop()
 	}
 
 	Addressee:
-	std::cout<<"Who do you want to chat with?"<<std::endl;
+	AppendToConsole("Who do you want to chat with?", true);
 	std::flush(std::cout);
 	std::string buf;
 	buf = PollCinOnce(polledFds, POLLED_SIZE, STDIN_IDX, POLL_DELAY, [&](){return shutDown.load();});
-	
+	lastInWritten = "";
+
 	UserPayload dest = UserPayload(buf);
 	Packet packet;
 	char* temp = dest.Serialize();
@@ -343,11 +347,11 @@ void Client::Loop()
 	acks.remove(&ack);
 
 	currentDest = buf;
-	std::cout<<std::endl<<
-	"- Write and press ENTER to send the message.\n"
-	"- To register an audio, type " << REGISTER_KEY << ", when you are done, press ENTER to send it.\n"
-	"- To change addressee, type " << CHANGE_DEST_KEY << std::endl <<
-	"- To quit type " << QUIT_KEY << std::endl<<std::endl;
+	AppendToConsole(
+	"\n- Write and press ENTER to send the message.\n"
+	"- To register an audio, type " + std::string(REGISTER_KEY) + ", when you are done, press ENTER to send it.\n"
+	"- To change addressee, type " + CHANGE_DEST_KEY + "\n" +
+	"- To quit type " + QUIT_KEY + "\n\n", false);
 
 	// Can't use the poll routine cause i need the goto
 	while(!shutDown.load())
@@ -358,7 +362,6 @@ void Client::Loop()
 			std::getline(std::cin, buf);
 			if(buf == "/c")
 			{
-				//System("clear");
 				goto Addressee;
 			}
 			else if (buf == "/q")
@@ -368,8 +371,7 @@ void Client::Loop()
 			else if (buf == "/r")
 			{
 				SoundRegistrer *registrer = new SoundRegistrer();
-				std::cout << "Press ENTER to stop the registration" << std::endl;
-				std::cout << "Registering..." << std::endl;
+				AppendToConsole("Press ENTER to stop the registration\nRegistering...", false);
 				registrer->Register([]() -> bool { std::cin.ignore(); return true; });
 				SendAudio(currentDest);
 				delete registrer;
