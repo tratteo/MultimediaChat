@@ -201,15 +201,6 @@ void ClientHandler::Loop()
                     }
                     break;
                 }
-                case PAYLOAD_ACK:
-                {
-                    // Notify all interested acks
-                    for(auto &ack : acks)
-					{
-						*ack = true;
-					}
-					break;
-                }
                 case PAYLOAD_DED_DGRAM_PORT:
                 {
                     packet = Packet(buf);
@@ -292,26 +283,13 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         Send(&packet, destData->GetFd());
         delete[] temp;
         packet.Purge();
- 
-        bool ack = false;
-        acks.push_back(&ack);
-        while(!ack) 
-        {
-            if(shutdownReq.load())
-            {
-                return;
-            }
-            usleep(200000);
-        }
-
-        std::cout<<"Ack received"<<std::endl;
 
         usleep(25000);
         char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
         int packetsSent = 0;
         int totalSent = 0;
         int index = 0;
-        std::cout<<"Forwarding audio to "<<header.To()<<std::endl;
+        std::cout<<"Forwarding audio to "<<header.To()<<"..."<<std::endl;
         std::ifstream file(RECEIVED_FILE, std::ifstream::in);
         if (file.fail())
         {
@@ -337,11 +315,19 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
                 std::cout << strerror(errno);
                 exit(1);
             }
+            int amount = (index * 100) / header.Segments();
+            for(int i = 0; i < amount; i++)
+            {
+                std::cout<<"#";
+            }
+            std::cout<<">";
+            std::cout<<"\r";
             index++;
             totalSent += sent;
             packetsSent++;
             usleep(100);
 	    }
+        std::cout<<"\n\r";
         //std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;
         file.close();
         delete[] buffer;

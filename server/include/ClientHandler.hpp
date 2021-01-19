@@ -37,7 +37,6 @@ class ClientHandler
     bool active = false;
     struct pollfd polledFds[2];
     void NotifyUDPPort();
-    std::list<bool*> acks;
     void UDPReceive(AudioMessageHeaderPayload amhPayload);
     ClientSessionData *sessionData;
     DataBaseHandler *dataHandler;

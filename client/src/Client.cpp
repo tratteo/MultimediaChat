@@ -180,10 +180,6 @@ void Client::ReceiveDaemon()
 						audioRecvThread.join();
 					}
 					audioRecvThread = std::thread(&Client::ReceiveAudio, this, vmhPayload);
-					//TODO Send ack
-					packet.Purge();
-					packet.CreateTrivial(PAYLOAD_ACK);
-					Send(&packet, clientSocket->GetFd());
 					packet.Purge();
 					break;
 				}
@@ -269,6 +265,7 @@ void Client::SendAudio(std::string dest)
 	addr.sin_port = htons(udpPort);
 	addr.sin_addr.s_addr = inet_addr(serv_ip);
 	addr.sin_family = AF_INET;
+	float progress = 0;
 	while (!file.eof())
 	{
 		PutUInt(buffer, index);
@@ -278,13 +275,21 @@ void Client::SendAudio(std::string dest)
 		if (sent == -1)
 		{
 			std::cout << strerror(errno);
-			exit(1);
+			break;
 		}
+		int amount = (index * 100) / amhPayload.Segments();
+		for(int i = 0; i < amount; i++)
+		{
+			std::cout<<"#";
+		}
+		std::cout<<">";
+		std::cout<<"\r";
 		index++;
 		totalSent += sent;
 		packetsSent++;
-		usleep(100);
+		usleep(250);
 	}
+	std::cout<<"\n\r";
 	file.close();
 	delete[] buffer;
 }
@@ -300,7 +305,7 @@ void Client::Loop()
     receiveDaemon = std::thread(&Client::ReceiveDaemon, this);
 
     LoginRoutine();
-    std::cout << "Asking for login..." << std::endl;
+    //std::cout << "Asking for login..." << std::endl;
 
 	while (!logged)
 	{
