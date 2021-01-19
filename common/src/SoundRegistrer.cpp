@@ -55,7 +55,8 @@ SoundRegistrer::SoundRegistrer()
 
 SoundRegistrer::~SoundRegistrer()
 {
-    delete buffer;
+    delete[] buffer;
+	snd_pcm_close(handle);
 }
 
 void SoundRegistrer::Register(std::function<bool()> stopCondition)

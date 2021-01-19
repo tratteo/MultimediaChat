@@ -11,6 +11,7 @@ class Packet
 	Packet(char type, char* payload, int payloadLength);
 	Packet(char* packetByteBuf);
 
+	void Purge();
 	char* Serialize() const;
 	void FromData(char type, char* payload, int payloadLength);
 	void FromByteBuf(char* packetByteBuf);
@@ -23,5 +24,5 @@ class Packet
 	private:
 	char type;
 	int length;
-	char* data;
+	char* data = nullptr;
 };

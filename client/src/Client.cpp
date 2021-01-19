@@ -9,24 +9,41 @@ Client::Client(char* servIp)
     int port = sock->GetPort();
     delete sock;
     udpSocket = new UDPSocket(port);
+	shutDown.store(false);
+
+	polledFds[STDIN_IDX].fd = 0;
+	polledFds[STDIN_IDX].events = POLLIN;
+	polledFds[TCP_IDX].fd = clientSocket->GetFd();
+	polledFds[TCP_IDX].events = POLLIN;
+	polledFds[UDP_IDX].fd = udpSocket->GetFd();
+	polledFds[UDP_IDX].events = POLLIN;
 }
 
 Client::~Client()
 {
+    shutDown.store(true);
     Packet packet = Packet(PAYLOAD_DISCONNECT);
 	Send(&packet, clientSocket->GetFd());
+	packet.Purge();
 
-    shutDown = true;
+	if(loopThread.joinable())
+	{
+		//std::cerr<<"Joining loop"<<std::endl;
+		loopThread.join();
+	}
     if(receiveDaemon.joinable())
     {
+		//std::cerr<<"Joining receive"<<std::endl;
 	    receiveDaemon.join();
     }
 	if(loginThread.joinable())
 	{
+		//std::cerr<<"Joining login"<<std::endl;
 		loginThread.join();
 	}
 	if(audioRecvThread.joinable())
 	{
+		//std::cerr<<"Joining audio"<<std::endl;
 		audioRecvThread.join();
 	}
     delete clientSocket;
@@ -37,9 +54,14 @@ void Client::LoginRoutine()
 {
     std::string password;
 	std::cout << "Username: ";
-	std::getline(std::cin, username);
+	std::flush(std::cout);
+	bool u = false;
+	bool p = false;
+	username = PollCinOnce(polledFds, POLLED_SIZE, STDIN_IDX, POLL_DELAY, [&](){return shutDown.load();});
+
 	std::cout << "Password: ";
-	std::getline(std::cin, password);
+	std::flush(std::cout);
+	password = PollCinOnce(polledFds, POLLED_SIZE, STDIN_IDX, POLL_DELAY, [&](){return shutDown.load();});
 
 	CredentialsPayload credentials = CredentialsPayload(username, password);
 	
@@ -47,7 +69,9 @@ void Client::LoginRoutine()
 	char* temp = credentials.Serialize();
 	packet.FromData(PAYLOAD_CREDENTIALS, temp, credentials.Size());
 	Send(&packet, clientSocket->GetFd());
-	delete temp;
+	packet.Purge();
+	delete[] temp;
+	return;
 }
 
 void Client::ReceiveAudio(AudioMessageHeaderPayload header)
@@ -58,22 +82,20 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
 	int lengths[header.Segments()] = { 0 };
 	int i = 1, received = 0;
-	while (i <= header.Segments() && !shutDown)
-	{
-		received = read(udpSocket->GetFd(),buf, DGRAM_PACKET_SIZE + sizeof(int) );
-		//std::cout << "Received seg: " << index << std::endl;
-		if (received > 0)
-		{
-			int index = ReadUInt(buf);
-			tot += received;
-			packets++;
-			i++;
-			lengths[index] = received - sizeof(int);
-			memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
-			memset(&buf, 0, DGRAM_PACKET_SIZE + sizeof(int));
-		}	
-	}
-    std::cout << "Bytes: " << tot << ", packets: " << packets << std::endl;
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){return shutDown.load() || i > header.Segments();}, [&i, &received, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead)
+    {
+        if (bytesRead > 0)
+        {
+            int index = ReadUInt(buf);
+            tot += bytesRead;
+            packets++;
+            i++;
+            lengths[index] = bytesRead - sizeof(int);
+            memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
+        }
+    });
+	std::cout<<"Received audio: "<<header.ToString()<<std::endl;
+    //std::cout << "Bytes: " << tot << ", packets: " << packets << std::endl;
 	std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
 	for (int i = 0; i < header.Segments(); i++)
 	{
@@ -84,17 +106,15 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	SoundPlayer *player = new SoundPlayer();
 	player->PlaySound();
 	delete player;
-	std::cout<<"Receive thread ended"<<std::endl;
+	return;
 }
 
 void Client::ReceiveDaemon()
 {
-    char buf[BUF_SIZE] = { 0 };
+	Packet packet;
 	int bytesRead;
-	int flags = fcntl(clientSocket->GetFd(), F_GETFL, 0); fcntl(clientSocket->GetFd(), F_SETFL, flags | O_NONBLOCK);
-	while (!shutDown)
+	PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, BUF_SIZE,[&](){return shutDown.load();}, [&](char* buf, int bytesRead)
 	{
-		bytesRead = Read(buf, BUF_SIZE, clientSocket->GetFd());
 		if (bytesRead > 0)
 		{
 			lastReceived = (uint8_t)buf[0];
@@ -103,8 +123,10 @@ void Client::ReceiveDaemon()
 				case PAYLOAD_DISCONNECT:
 				{
 					std::cout << "Oops, server went off :(" << std::endl;
+					packet.Purge();
+					receiveDaemon.detach();
 					delete this;
-                    exit(EXIT_SUCCESS);
+					return;
 					break;
 				}
 				case PAYLOAD_INVALID_CREDENTIALS:
@@ -132,7 +154,7 @@ void Client::ReceiveDaemon()
 				}
 				case PAYLOAD_MSG:
 				{
-					Packet packet = Packet(buf);
+					packet = Packet(buf);
 					MessagePayload message = MessagePayload(packet.GetData());
 					std::cout << message.From() << " whispers to you: " << message.Message() << std::endl;
 					break;
@@ -150,21 +172,24 @@ void Client::ReceiveDaemon()
 				case PAYLOAD_AUDIO_HEADER:
 				{
 					//TODO prepare client for receiving packets
-					Packet packet = Packet(buf);
+					packet = Packet(buf);
 					AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
-					std::cout << vmhPayload.ToString() << std::endl;
-
+					//std::cout << vmhPayload.ToString() << std::endl;
+					if(audioRecvThread.joinable())
+					{
+						audioRecvThread.join();
+					}
 					audioRecvThread = std::thread(&Client::ReceiveAudio, this, vmhPayload);
-					audioRecvThread.detach();
-
 					//TODO Send ack
-					/* packet.CreateTrivial(PAYLOAD_ACK);
-					Send(&packet, clientSocket->GetFd()); */
+					packet.Purge();
+					packet.CreateTrivial(PAYLOAD_ACK);
+					Send(&packet, clientSocket->GetFd());
+					packet.Purge();
 					break;
 				}
 				case PAYLOAD_ACK:
 				{
-					std::cout<<"ACK"<<std::endl;
+					//std::cout<<"ACK"<<std::endl;
 					for(auto &ack : acks)
 					{
 						*ack = true;
@@ -174,7 +199,7 @@ void Client::ReceiveDaemon()
 				case PAYLOAD_DED_DGRAM_PORT:
 				{
 					//TODO create udp towards the correct port
-					Packet packet = Packet(buf);
+					packet = Packet(buf);
 					DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
 					//std::cout<<"The server udp is on "<<portPayload.ToString()<<std::endl;
 					udpPort = portPayload.Port();
@@ -183,12 +208,14 @@ void Client::ReceiveDaemon()
 					char* temp = portPayload.Serialize();
 					packet.FromData(PAYLOAD_DED_DGRAM_PORT, temp, portPayload.Size());
 					Send(&packet, clientSocket->GetFd());
-					delete temp;
+					delete[] temp;
 					break;
 				}
 			}
 		}
-	}
+		packet.Purge();
+	});
+	return;
 }
 
 void Client::SendAudio(std::string dest)
@@ -211,13 +238,13 @@ void Client::SendAudio(std::string dest)
 	char* temp = amhPayload.Serialize();
 	packet.FromData(PAYLOAD_AUDIO_HEADER, temp, amhPayload.Size());
 	Send(&packet, clientSocket->GetFd());
-	delete temp;
+	delete[] temp;
+	packet.Purge();
 
 	char buf[BUF_SIZE] = { 0 };
 	int bytesRead = 0;
 	bool ack = false;
 	acks.push_back(&ack);
-	std::cout << "Waiting for ack" << std::endl;
 	bool stop = false;
 	while (!ack)
 	{
@@ -232,12 +259,12 @@ void Client::SendAudio(std::string dest)
 		std::cout<<"Invalid dest for audio"<<std::endl;
 		return;
 	}
-
+	std::cout<<"Ack received"<<std::endl;
 	usleep(25000);
 	int packetsSent = 0;
 	int totalSent = 0;
 	int index = 0;
-	std::cout<<"Trasmitting data.."<<std::endl;
+	std::cout<<"Sending audio..."<<std::endl;
 	struct sockaddr_in addr;
 	addr.sin_port = htons(udpPort);
 	addr.sin_addr.s_addr = inet_addr(serv_ip);
@@ -258,17 +285,16 @@ void Client::SendAudio(std::string dest)
 		packetsSent++;
 		usleep(100);
 	}
-	std::cout << "Bytes: " << totalSent << " ,packets: " << packetsSent << std::endl;
 	file.close();
-	delete buffer;
+	delete[] buffer;
 }
 
-int Client::Run()
+void Client::Loop()
 {
-    if(!clientSocket->TryConnect())
+	if(!clientSocket->TryConnect())
     {
         std::cerr<<"Unble to connect to server"<<std::endl;
-        return EXIT_FAILURE;
+        return;
     }
     //Start the receive daemon thread
     receiveDaemon = std::thread(&Client::ReceiveDaemon, this);
@@ -278,45 +304,51 @@ int Client::Run()
 
 	while (!logged)
 	{
-		;
+		if(shutDown.load()) return;
 	}
 
 	Addressee:
-		std::cout<<"Who do you want to chat with?"<<std::endl;
+	std::cout<<"Who do you want to chat with?"<<std::endl;
+	std::flush(std::cout);
+	std::string buf;
+	buf = PollCinOnce(polledFds, POLLED_SIZE, STDIN_IDX, POLL_DELAY, [&](){return shutDown.load();});
+	
+	UserPayload dest = UserPayload(buf);
+	Packet packet;
+	char* temp = dest.Serialize();
+	packet.FromData(PAYLOAD_USER, temp, dest.Size());
+	delete[] temp;
 
-		std::string buf;
-
-		std::getline(std::cin, buf);
-		UserPayload dest = UserPayload(buf);
-		Packet packet;
-		char* temp = dest.Serialize();
-		packet.FromData(PAYLOAD_USER, temp, dest.Size());
-		delete temp;
-
-		uint8_t status = PAYLOAD_ACK;
-		bool ack = false;
-		acks.push_back(&ack);
-		Send(&packet, clientSocket->GetFd());
-		while(!ack)
+	uint8_t status = PAYLOAD_ACK;
+	bool ack = false;
+	acks.push_back(&ack);
+	Send(&packet, clientSocket->GetFd());
+	packet.Purge();
+	while(!ack)
+	{
+		if(shutDown.load()) return;
+		if(status == PAYLOAD_INEXISTENT_DEST || status == PAYLOAD_OFFLINE_USR)
 		{
-			if(status == PAYLOAD_INEXISTENT_DEST || status == PAYLOAD_OFFLINE_USR)
-			{
-				acks.remove(&ack);
-				goto Addressee;
-			}
-			usleep(10000);
-			status = lastReceived;
+			acks.remove(&ack);
+			goto Addressee;
 		}
-		acks.remove(&ack);
+		usleep(10000);
+		status = lastReceived;
+	}
+	acks.remove(&ack);
 
-		currentDest = buf;
-		std::cout<<std::endl<<
-		"- Write and press ENTER to send the message.\n"
-		"- To register an audio, type " << REGISTER_KEY << ", when you are done, press ENTER to send it.\n"
-		"- To change addressee, type " << CHANGE_DEST_KEY << std::endl <<
-		"- To quit type " << QUIT_KEY << std::endl<<std::endl;
-		
-		while(true)
+	currentDest = buf;
+	std::cout<<std::endl<<
+	"- Write and press ENTER to send the message.\n"
+	"- To register an audio, type " << REGISTER_KEY << ", when you are done, press ENTER to send it.\n"
+	"- To change addressee, type " << CHANGE_DEST_KEY << std::endl <<
+	"- To quit type " << QUIT_KEY << std::endl<<std::endl;
+
+	// Can't use the poll routine cause i need the goto
+	while(!shutDown.load())
+	{
+		int res = poll(polledFds, 3, 200);
+		if(polledFds[0].revents & POLLIN)
 		{
 			std::getline(std::cin, buf);
 			if(buf == "/c")
@@ -331,7 +363,7 @@ int Client::Run()
 			else if (buf == "/r")
 			{
 				SoundRegistrer *registrer = new SoundRegistrer();
-				std::cout << "Press enter to stop the registration" << std::endl;
+				std::cout << "Press ENTER to stop the registration" << std::endl;
 				std::cout << "Registering..." << std::endl;
 				registrer->Register([]() -> bool { std::cin.ignore(); return true; });
 				SendAudio(currentDest);
@@ -343,8 +375,20 @@ int Client::Run()
 				char* temp = messagePayload.Serialize();
 				packet.FromData(PAYLOAD_MSG, temp, messagePayload.Size());
 				Send(&packet, clientSocket->GetFd());
-				delete temp;
+				delete[] temp;
+				packet.Purge();
 			}
-		}
-	return EXIT_SUCCESS;
+		}		
+	}
+	return;
+}
+
+void Client::Join()
+{
+	loopThread.join();
+}
+
+void Client::Run()
+{
+	loopThread = std::thread(&Client::Loop, this);
 }

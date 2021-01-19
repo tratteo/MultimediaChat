@@ -9,7 +9,7 @@ SoundPlayer::SoundPlayer()
 SoundPlayer::~SoundPlayer()
 {
 	snd_pcm_close(pcm_handle);
-	delete buff;
+	delete[] buff;
 }
 
 void SoundPlayer::Init()

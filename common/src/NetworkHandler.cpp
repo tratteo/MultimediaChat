@@ -32,7 +32,9 @@ int Read(char* buffer, int bufSize, int fd)
 bool Send(Packet *packet, int fd)
 {
 	int packetLen = packet->GetTotalLength();
-	int sent = Write(packet->Serialize(), packetLen, fd);
+	char* temp = packet->Serialize();
+	int sent = Write(temp, packetLen, fd);
+	delete[] temp;
 	return sent == packetLen;
 }
 

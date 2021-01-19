@@ -36,7 +36,7 @@ void CSocket::Init()
 
 CSocket::CSocket(int port)
 {
-	type == CSocket::SERVER;
+	type = CSocket::SERVER;
 	connected = false;
 	this->port = port;
 

@@ -7,7 +7,8 @@ CMMSRCDIR 	= ../common/src
 
 SRCS 		= 	$(SRCDIR)/client.cpp $(SRCDIR)/Client.cpp $(CMMSRCDIR)/CSocket.cpp $(CMMSRCDIR)/errhandler.cpp $(CMMSRCDIR)/Payloads.cpp \
 			  	$(CMMSRCDIR)/NetworkHandler.cpp $(CMMSRCDIR)/Packet.cpp $(CMMSRCDIR)/SoundRegistrer.cpp $(CMMSRCDIR)/UDPSocket.cpp \
-				$(CMMSRCDIR)/ByteBufferUtils.cpp $(CMMSRCDIR)/ClientSessionData.cpp $(CMMSRCDIR)/SoundPlayer.cpp $(CMMSRCDIR)/UserData.cpp
+				$(CMMSRCDIR)/ByteBufferUtils.cpp $(CMMSRCDIR)/ClientSessionData.cpp $(CMMSRCDIR)/SoundPlayer.cpp $(CMMSRCDIR)/UserData.cpp \
+				$(CMMSRCDIR)/Poller.cpp
 
 OBJS 		= $(SRCS:.c=.o)
 TARGET		= mc_client.out

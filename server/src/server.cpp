@@ -19,7 +19,6 @@ int main()
     servSocket = new CSocket(8080);
 
 	signal(SIGINT, CloseService);
-	signal(SIGKILL, CloseService);
 	signal(SIGTERM, CloseService);
 
     dataHandler = new DataBaseHandler();
@@ -32,7 +31,7 @@ int main()
         {
             std::cout << "New connection accepted, handling..." << std::endl;
             ClientHandler *handler = new ClientHandler(data, dataHandler, OnHandlerDisconnect);
-            clientThreads.push_back(std::thread([&](){handler->HandleConnection();}));
+            handler->HandleConnection();
             handlers.push_front(handler);
             dataHandler->UserConnected(data);
         }
@@ -47,13 +46,7 @@ void OnHandlerDisconnect(ClientHandler* handler)
 void CloseService(int signal)
 {
     dataHandler->SerializeDatabase();
-    for(auto &t : clientThreads)
-    {
-        if(t.joinable())
-        {
-            t.join();
-        }
-    }
+    std::cout<<"Cleaning all the junk..."<<std::endl;
     for (auto& h : handlers)
     {
         delete h;

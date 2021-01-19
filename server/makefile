@@ -8,7 +8,8 @@ SRCS 		= 	$(SRCDIR)/server.cpp $(SRCDIR)/ClientHandler.cpp  \
 			  	$(CMMSRCDIR)/ClientSessionData.cpp $(CMMSRCDIR)/errhandler.cpp $(SRCDIR)/Serializer.cpp \
 			  	$(CMMSRCDIR)/UserData.cpp $(CMMSRCDIR)/Payloads.cpp $(CMMSRCDIR)/Packet.cpp \
 			  	$(CMMSRCDIR)/NetworkHandler.cpp $(SRCDIR)/DatabaseHandler.cpp $(CMMSRCDIR)/ChatData.cpp \
-			  	$(CMMSRCDIR)/ByteBufferUtils.cpp $(CMMSRCDIR)/UDPSocket.cpp $(CMMSRCDIR)/CSocket.cpp
+			  	$(CMMSRCDIR)/ByteBufferUtils.cpp $(CMMSRCDIR)/UDPSocket.cpp $(CMMSRCDIR)/CSocket.cpp \
+				$(CMMSRCDIR)/Poller.cpp
 
 OBJS 		= $(SRCS:.c=.o)
 TARGET		= mc_server.out

@@ -1,17 +1,16 @@
 #include "../Packet.hpp"
 
-
 Packet::~Packet()
 {
-	if (data != nullptr)
+/* 	if (data != nullptr)
 	{
-		delete data;
-	}
+		delete[] data;
+	} */
 }
 
 Packet::Packet()
 {
-
+	Purge();
 }
 
 Packet::Packet(char type)
@@ -42,8 +41,20 @@ char* Packet::Serialize() const
 	return packetByteBuf;
 }
 
+void Packet::Purge()
+{
+	if(data != nullptr)
+	{
+		delete[] data;
+		data = nullptr;
+	}
+	length = 0;
+	type = -1;
+}
+
 void Packet::FromData(char type, char* payload, int payloadLength)
 {
+	Purge();
 	data = new char[payloadLength];
 	memcpy(data, payload, payloadLength);
 	this->type = type;
@@ -52,6 +63,7 @@ void Packet::FromData(char type, char* payload, int payloadLength)
 
 void Packet::FromByteBuf(char* packetByteBuf)
 {
+	Purge();
 	type = packetByteBuf[0];
 	length = 0x0;
 	for (int i = 1; i < 5; i++)
@@ -64,6 +76,7 @@ void Packet::FromByteBuf(char* packetByteBuf)
 
 void Packet::CreateTrivial(char type)
 {
+	Purge();
 	this->type = type;
 	data = nullptr;
 	length = 0;

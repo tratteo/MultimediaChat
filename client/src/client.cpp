@@ -8,7 +8,7 @@
 
 void CloseService(int signal);
 
-Client * client;
+Client *client;
 
 int main(int argv, char** argc)
 {
@@ -18,19 +18,19 @@ int main(int argv, char** argc)
 	}
 
 	signal(SIGINT, CloseService);
-	signal(SIGKILL, CloseService);
 	signal(SIGTERM, CloseService);
 
 	std::cout << "Multimedia Chat Client" << std::endl;
 
 	client = new Client(argc[1]);
-	int res = client->Run();
-	delete client;
-	exit(res);
+	client->Run();
+	client->Join();
+	CloseService(0);
 }
 
 void CloseService(int signal)
 {
+	std::cout<<std::endl<<"Cleaning junk..."<<std::endl;
 	delete client;
 	exit(EXIT_SUCCESS);
 }

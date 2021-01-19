@@ -20,6 +20,7 @@ DataBaseHandler::~DataBaseHandler()
 
 void DataBaseHandler::SerializeDatabase()
 {
+    std::cout<<std::endl;
     for (auto usr : registeredUsers)
     {
         std::cout << "Serializing data for user: " << usr->GetUsername() << std::endl;

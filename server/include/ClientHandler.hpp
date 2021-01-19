@@ -6,8 +6,11 @@
 #include <signal.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <atomic>
+#include <poll.h>
 #include <string>
 #include <list>
+#include "../../common/Poller.hpp"
 #include "../../common/Sound.hpp"
 #include "../../common/UserData.hpp"
 #include "../../common/errhandler.hpp" 
@@ -16,7 +19,10 @@
 #include "../../common/Packet.hpp"
 #include "../../common/NetworkHandler.hpp"
 #include "../include/DatabaseHandler.hpp"
-
+#define TCP_IDX 0
+#define UDP_IDX 1
+#define POLL_DELAY 150
+#define POLLED_SIZE 2
 #define BUF_SIZE 512
 
 class ClientHandler
@@ -28,13 +34,16 @@ class ClientHandler
     void CloseConnection();
 
     private:
+    bool active = false;
+    struct pollfd polledFds[2];
     void NotifyUDPPort();
     std::list<bool*> acks;
     void UDPReceive(AudioMessageHeaderPayload amhPayload);
     ClientSessionData *sessionData;
     DataBaseHandler *dataHandler;
-    bool shutdownReq = false;
+    std::atomic<bool> shutdownReq;
     bool closedLocal = true;
+    std::thread mainThread;
     std::thread udpThread;
     void ( *OnDisconnect )(ClientHandler*);
     void Loop();

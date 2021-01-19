@@ -19,10 +19,10 @@ class CSocket
 	};
 
 	private:
-	bool connected;
+	bool connected = false;
 	char* serverIp;
 	int socketFd;
-	Type type;
+	Type type = Type::CLIENT;
 	struct sockaddr_in servAddr;
 	int port;
 	void Init();
