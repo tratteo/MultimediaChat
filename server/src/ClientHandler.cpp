@@ -88,7 +88,7 @@ void ClientHandler::Loop()
     Packet packet;
     int bytesRead;
 
-    PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, BUF_SIZE, [&](){return shutdownReq.load();}, [&](char* buf, int bytesRead)
+    PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, BUF_SIZE, [&](){return shutdownReq.load();}, [&](char* buf, int bytesRead, int recycle)
     {
         if (bytesRead > 0)
         {
@@ -250,19 +250,23 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
     int packets = 0;
     char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
     int lengths[header.Segments()] = { 0 };
-    int i = 1, received = 0;
-    
-    PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){return shutdownReq.load() || i > header.Segments();}, [&i, &received, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead)
+    int i = 1, rec = 0;
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){ return shutdownReq.load() || i >= header.Segments() || rec >= (header.Segments() * 2); }, [&i, &rec, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead, int recycle)
     {
+		rec = recycle;
+		if(bytesRead < 0)
+		{
+			std::cout<<"Unable to read from UDP: "<<strerror(errno)<<std::endl;
+		}
         if (bytesRead > 0)
         {
             int index = ReadUInt(buf);
             tot += bytesRead;
             packets++;
-            //std::cout<<"Receiving: "<<i<<std::endl;
             i++;
             lengths[index] = bytesRead - sizeof(int);
             memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
+			std::cout<<i<<std::endl;
         }
     });
     std::cout<<"Received audio message: "<<header.ToString()<<std::endl;
@@ -284,7 +288,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         delete[] temp;
         packet.Purge();
 
-        usleep(250000);
+        usleep(500000);
         char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
         int packetsSent = 0;
         int totalSent = 0;

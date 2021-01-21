@@ -19,7 +19,7 @@ UDPSocket::UDPSocket(int port)
 		perror("setsockopt"); exit(1);
 	}
 
-	int size = 1024 * 1024;
+	int size = 2048 * 1024;
 	if(setsockopt (fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == -1)
 	{
 		perror("Unable to increase recv buffer size");

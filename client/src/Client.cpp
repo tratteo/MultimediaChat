@@ -84,10 +84,11 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	int packets = 0;
 	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
 	int lengths[header.Segments()] = { 0 };
-	int i = 1, received = 0;
+	int i = 1, rec = 0;
 	std::cout<<"Into thread: "<<header.ToString()<<std::endl;
-	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){return shutDown.load() || i >= header.Segments();}, [&i, &received, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead)
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){ return shutDown.load() || i >= header.Segments() || rec >= (header.Segments() * 2); }, [&i, &rec, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead, int recycle)
     {
+		rec = recycle;
 		if(bytesRead < 0)
 		{
 			std::cout<<"Unable to read from UDP: "<<strerror(errno)<<std::endl;
@@ -104,6 +105,10 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
         }
     });
 	std::cout<<"Tot: "<<tot<<", packets: "<<packets<<std::endl;
+	if(tot < header.Segments())
+	{
+		AppendToConsole("Some packets may have been lost :(",false);
+	}
 	AppendToConsole("Received audio: " + header.ToString(), false);
 	std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
 	for (int i = 0; i < header.Segments(); i++)
@@ -142,7 +147,7 @@ void Client::ReceiveDaemon()
 {
 	Packet packet;
 	int bytesRead;
-	PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, BUF_SIZE,[&](){return shutDown.load();}, [&](char* buf, int bytesRead)
+	PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, BUF_SIZE,[&](){return shutDown.load();}, [&](char* buf, int bytesRead, int recycle)
 	{
 		if (bytesRead > 0)
 		{

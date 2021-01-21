@@ -3,7 +3,7 @@
 #include "SoundPlayer.hpp"
 #include "SoundRegistrer.hpp"
 #define DGRAM_PACKET_SIZE 2048
-#define DGRAM_SEND_DELAY 850
+#define DGRAM_SEND_DELAY 1000
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #define CHANNELS 2
 #define SAMPLE_RATE 44100
