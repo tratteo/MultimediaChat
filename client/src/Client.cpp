@@ -122,7 +122,7 @@ void Client::AppendToConsole(std::string line, bool inputRequest)
 	else
 	{
 		std::flush(std::cout);
-		std::cout<<std::endl<<line<<std::endl;
+		std::cout<<line<<std::endl;
 		if(lastInWritten != "")
 		{
 			std::cout<<lastInWritten<<std::endl<<"> ";
