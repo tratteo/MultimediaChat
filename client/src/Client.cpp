@@ -110,12 +110,15 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 		}
 		
     });
-	std::cout<<"Tot: "<<tot<<", packets: "<<packets<<std::endl;
-	if(tot < header.Segments())
+	packets++;
+	if(packets < header.Segments())
 	{
 		AppendToConsole("Some packets may have been lost :(",false);
 	}
-	AppendToConsole("Received audio: " + header.ToString(), false);
+	AppendToConsole("Original audio: " + header.ToString(), false);
+	int lost = header.Segments() - packets;
+	float percentage = (float) lost / header.Segments();
+	AppendToConsole("Received: "+std::to_string(packets)+" segments, lost: "+std::to_string(lost)+"("+std::to_string(percentage)+"%)",false);
 	std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
 	for (int i = 0; i < header.Segments(); i++)
 	{

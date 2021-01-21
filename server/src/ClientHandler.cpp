@@ -278,8 +278,15 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         }
 		
     });
-    std::cout<<"Received audio message: "<<header.ToString()<<std::endl;
-    //std::cout << "Bytes: " << tot << ", packets: " << packets << std::endl;
+    packets++;
+    if(packets < header.Segments())
+	{
+		std::cout<<"Some packets may have been lost :("<<std::endl;
+	}
+	std::cout<<"Original audio: " + header.ToString()<<std::endl;
+	int lost = header.Segments() - packets ;
+	float percentage = (float) lost / header.Segments();
+	std::cout<<"Received: "<<packets<<" segments, lost: "<<lost<<" ("<<percentage<<"%)"<<std::endl;
     std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
     for (int i = 0; i < header.Segments(); i++)
     {
