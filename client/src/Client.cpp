@@ -309,7 +309,7 @@ void Client::SendAudio(std::string dest)
 		index++;
 		totalSent += sent;
 		packetsSent++;
-		usleep(1000);
+		usleep(10000);
 	}
 	std::cout<<"\n\r";
 	file.close();

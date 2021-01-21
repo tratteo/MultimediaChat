@@ -325,7 +325,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
             index++;
             totalSent += sent;
             packetsSent++;
-            usleep(1000);
+            usleep(10000);
 	    }
         std::cout<<"\n\r";
         //std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;
