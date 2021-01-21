@@ -100,7 +100,7 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
             i++;
             lengths[index] = bytesRead - sizeof(int);
             memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
-			//std::cout<<i<<std::endl;
+			std::cout<<i<<std::endl;
         }
     });
 	AppendToConsole("Received audio: " + header.ToString(), false);
@@ -311,7 +311,7 @@ void Client::SendAudio(std::string dest)
 		packetsSent++;
 		usleep(10000);
 	}
-	std::cout<<"\n\r";
+	std::cout<<std::endl;
 	file.close();
 	delete[] buffer;
 }

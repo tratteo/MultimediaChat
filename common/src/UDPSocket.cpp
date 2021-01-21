@@ -14,10 +14,22 @@ UDPSocket::UDPSocket(int port)
 	servAddr.sin_port = htons(port);
 
 	int opt = 1;
-	if (setsockopt(fd ,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt)) == -1) 	
+	if (setsockopt(fd ,SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) 	
 	{
 		perror("setsockopt"); exit(1);
 	}
+
+	int size = 1024 * 1024;
+	if(setsockopt (fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == -1)
+	{
+		perror("Unable to increase recv buffer size");
+	}
+
+	if(setsockopt (fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) == -1)
+	{
+		perror("Unable to increase snd buffer size");
+	}
+
 	servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(fd, (const struct sockaddr*)&servAddr, sizeof(servAddr)) < 0)
 	{
