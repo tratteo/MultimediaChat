@@ -86,23 +86,29 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	int lengths[header.Segments()] = { 0 };
 	int i = 1, rec = 0;
 	std::cout<<"Into thread: "<<header.ToString()<<std::endl;
-	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){ return shutDown.load() || i >= header.Segments() || rec >= (header.Segments() * 2); }, [&i, &rec, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead, int recycle)
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutDown.load() || i >= header.Segments() || rec >= (header.Segments() << 2); }, [&buf, this, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
     {
 		rec = recycle;
-		if(bytesRead < 0)
+		//std::cout<<rec<<std::endl;
+		if(pollin)
 		{
-			std::cout<<"Unable to read from UDP: "<<strerror(errno)<<std::endl;
+			int bytesRead = read(this->polledFds[UDP_IDX].fd, buf, DGRAM_PACKET_SIZE + sizeof(int));
+			if(bytesRead < 0)
+			{
+				std::cout<<"Unable to read from UDP: "<<strerror(errno)<<std::endl;
+			}
+			if (bytesRead > 0)
+			{
+				int index = ReadUInt(buf);
+				tot += bytesRead;
+				packets++;
+				i++;
+				lengths[index] = bytesRead - sizeof(int);
+				memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
+				std::cout<<i<<std::endl;
+			}
 		}
-        if (bytesRead > 0)
-        {
-            int index = ReadUInt(buf);
-            tot += bytesRead;
-            packets++;
-            i++;
-            lengths[index] = bytesRead - sizeof(int);
-            memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
-			std::cout<<i<<std::endl;
-        }
+		
     });
 	std::cout<<"Tot: "<<tot<<", packets: "<<packets<<std::endl;
 	if(tot < header.Segments())
@@ -146,95 +152,100 @@ void Client::AppendToConsole(std::string line, bool inputRequest)
 void Client::ReceiveDaemon()
 {
 	Packet packet;
-	int bytesRead;
-	PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, BUF_SIZE,[&](){return shutDown.load();}, [&](char* buf, int bytesRead, int recycle)
+	char buf[BUF_SIZE];
+	PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY,[&](){return shutDown.load();}, [this, &buf, &packet](bool pollin, int recycle)
 	{
-		if (bytesRead > 0)
+		if(pollin)
 		{
-			lastReceived = (uint8_t)buf[0];
-			switch ((uint16_t)buf[0])
+			int bytesRead = read(this->polledFds[TCP_IDX].fd, buf, BUF_SIZE);
+		
+			if (bytesRead > 0)
 			{
-				case PAYLOAD_DISCONNECT:
+				lastReceived = (uint8_t)buf[0];
+				switch ((uint16_t)buf[0])
 				{
-					AppendToConsole("Oops, server went off :(", false);
-					packet.Purge();
-					receiveDaemon.detach();
-					delete this;
-					return;
-					break;
-				}
-				case PAYLOAD_INVALID_CREDENTIALS:
-				{
-					logged = false;
-					AppendToConsole("Invalid credentials, try again", false);
-					if (loginThread.joinable())
+					case PAYLOAD_DISCONNECT:
 					{
-						loginThread.join();
+						AppendToConsole("Oops, server went off :(", false);
+						packet.Purge();
+						receiveDaemon.detach();
+						delete this;
+						return;
+						break;
 					}
-					loginThread = std::thread(&Client::LoginRoutine, this);
-					break;
-				}
-				case PAYLOAD_LOGGED_IN:
-				{
-					AppendToConsole("Login successful", false);
-					logged = true;
-					break;
-				}
-				case PAYLOAD_REGISTERED:
-				{
-					AppendToConsole("User was not present in the database, registration successfull", false);
-					logged = true;
-					break;
-				}
-				case PAYLOAD_MSG:
-				{
-					packet = Packet(buf);
-					MessagePayload message = MessagePayload(packet.GetData());
-					AppendToConsole( message.From() + " > " + message.Message(), false);
-					break;
-				}
-				case PAYLOAD_INEXISTENT_DEST:
-				{
-					AppendToConsole( "The user does not exists :-/", false);
-					break;
-				}
-				case PAYLOAD_OFFLINE_USR:
-				{
-					AppendToConsole("The user you tried to contact is offline", false);
-					break;
-				}
-				case PAYLOAD_AUDIO_HEADER:
-				{
-					packet = Packet(buf);
-					AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
-					if(audioRecvThread.joinable())
+					case PAYLOAD_INVALID_CREDENTIALS:
 					{
-						audioRecvThread.join();
+						logged = false;
+						AppendToConsole("Invalid credentials, try again", false);
+						if (loginThread.joinable())
+						{
+							loginThread.join();
+						}
+						loginThread = std::thread(&Client::LoginRoutine, this);
+						break;
 					}
-					std::cout<<"Received audio: "<<vmhPayload.ToString()<<std::endl;
-					audioRecvThread = std::thread(&Client::ReceiveAudio, this, vmhPayload);
-					packet.Purge();
-					break;
-				}
-				case PAYLOAD_ACK:
-				{
-					for(auto &ack : acks)
+					case PAYLOAD_LOGGED_IN:
 					{
-						*ack = true;
+						AppendToConsole("Login successful", false);
+						logged = true;
+						break;
 					}
-					break;
-				}
-				case PAYLOAD_DED_DGRAM_PORT:
-				{
-					packet = Packet(buf);
-					DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
-					udpPort = portPayload.Port();
-					portPayload = DgramPortPayload(udpSocket->GetPort());
-					char* temp = portPayload.Serialize();
-					packet.FromData(PAYLOAD_DED_DGRAM_PORT, temp, portPayload.Size());
-					Send(&packet, clientSocket->GetFd());
-					delete[] temp;
-					break;
+					case PAYLOAD_REGISTERED:
+					{
+						AppendToConsole("User was not present in the database, registration successfull", false);
+						logged = true;
+						break;
+					}
+					case PAYLOAD_MSG:
+					{
+						packet = Packet(buf);
+						MessagePayload message = MessagePayload(packet.GetData());
+						AppendToConsole( message.From() + " > " + message.Message(), false);
+						break;
+					}
+					case PAYLOAD_INEXISTENT_DEST:
+					{
+						AppendToConsole( "The user does not exists :-/", false);
+						break;
+					}
+					case PAYLOAD_OFFLINE_USR:
+					{
+						AppendToConsole("The user you tried to contact is offline", false);
+						break;
+					}
+					case PAYLOAD_AUDIO_HEADER:
+					{
+						packet = Packet(buf);
+						AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
+						if(audioRecvThread.joinable())
+						{
+							audioRecvThread.join();
+						}
+						std::cout<<"Received audio: "<<vmhPayload.ToString()<<std::endl;
+						audioRecvThread = std::thread(&Client::ReceiveAudio, this, vmhPayload);
+						packet.Purge();
+						break;
+					}
+					case PAYLOAD_ACK:
+					{
+						for(auto &ack : acks)
+						{
+							*ack = true;
+						}
+						break;
+					}
+					case PAYLOAD_DED_DGRAM_PORT:
+					{
+						packet = Packet(buf);
+						DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
+						udpPort = portPayload.Port();
+						portPayload = DgramPortPayload(udpSocket->GetPort());
+						char* temp = portPayload.Serialize();
+						packet.FromData(PAYLOAD_DED_DGRAM_PORT, temp, portPayload.Size());
+						Send(&packet, clientSocket->GetFd());
+						delete[] temp;
+						break;
+					}
 				}
 			}
 		}

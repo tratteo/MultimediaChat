@@ -9,4 +9,4 @@
 #include <functional>
 
 std::string PollCinOnce(pollfd info[], int size, int index, int delay, std::function<bool()> condition);
-void PollFdLoop(pollfd info[], int size, int index, int delay, int bufSize, std::function<bool()> condition, std::function<void(char* buf, int read, int recycle)> body);
+void PollFdLoop(pollfd info[], int size, int index, int delay, std::function<bool()> condition, std::function<void(bool pollin, int recycle)> body);

@@ -19,7 +19,7 @@
 #define STDIN_IDX 0
 #define TCP_IDX 1
 #define UDP_IDX 2
-#define POLL_DELAY 0
+#define POLL_DELAY 1
 #define POLLED_SIZE 3
 #define BUF_SIZE 512
 #define REGISTER_KEY "/r"

@@ -16,15 +16,21 @@ std::string PollCinOnce(pollfd info[], int size, int index, int delay,std::funct
     return line;
 }
 
-void PollFdLoop(pollfd info[], int size, int index, int delay, int bufSize, std::function<bool()> condition, std::function<void(char* buf, int read, int recycle)> body)
+void PollFdLoop(pollfd info[], int size, int index, int delay, std::function<bool()> condition, std::function<void(bool pollin, int recycle)> body)
 {
     int recycle = 0;
-    char buf[bufSize];
     while(!condition())
     {
+        std::flush(std::cout);
         recycle++;
         int res = poll(info, size, delay);
-        if(res > 0 && info[index].revents & POLLIN)
+        bool pollin = res > 0 && info[index].revents & POLLIN;
+        if(pollin)
+        {
+            recycle = 0x0;
+        }
+        body(pollin, recycle);
+        /* if(res > 0 && info[index].revents & POLLIN)
 		{
             recycle = 0;
             int bytesRead = read(info[index].fd, buf, bufSize);
@@ -33,9 +39,10 @@ void PollFdLoop(pollfd info[], int size, int index, int delay, int bufSize, std:
         }
         else
         {
-            //std::cout<<"Polling";
             std::flush(std::cout);
         }
+        std::cout<<recycle<<std::endl;
+        std::flush(std::cout); */
     }
     return;     
 }

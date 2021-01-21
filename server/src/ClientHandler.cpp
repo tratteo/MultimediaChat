@@ -86,74 +86,142 @@ void ClientHandler::NotifyUDPPort()
 void ClientHandler::Loop()
 {
     Packet packet;
-    int bytesRead;
+    char buf[BUF_SIZE];
 
-    PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, BUF_SIZE, [&](){return shutdownReq.load();}, [&](char* buf, int bytesRead, int recycle)
+    PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, [&](){return shutdownReq.load();}, [this, &buf, &packet](bool pollin, int recycle)
     {
-        if (bytesRead > 0)
+        if(pollin)
         {
-            switch ((uint16_t)buf[0])
+            int bytesRead = read(polledFds[TCP_IDX].fd, buf, BUF_SIZE);
+            if (bytesRead > 0)
             {
-                case PAYLOAD_DISCONNECT:
+                switch ((uint16_t)buf[0])
                 {
-                    closedLocal = false;
-                    shutdownReq.store(true);
-                    active = false;
-                    return;
-                }
-                case PAYLOAD_CREDENTIALS:
-                {
-                    usleep(25000);
-                    packet = Packet(buf);
-       
-                    CredentialsPayload credentials = CredentialsPayload(packet.GetData());
-                    if (!dataHandler->IsUserRegistered(credentials.Username()))
+                    case PAYLOAD_DISCONNECT:
                     {
-                        UserData* user = new UserData(credentials.Username(), credentials.Password());
-                        dataHandler->RegisterUser(user);
-                        sessionData->UserLogged(user);
-                        std::cout << credentials.Username() << " has registered"<< std::endl;
-                        packet.CreateTrivial(PAYLOAD_REGISTERED);
-                        Send(&packet, sessionData->GetFd());
-                        NotifyUDPPort();
+                        closedLocal = false;
+                        shutdownReq.store(true);
+                        active = false;
+                        return;
                     }
-                    else
+                    case PAYLOAD_CREDENTIALS:
                     {
-                        UserData* data = dataHandler->GetRegisteredUser(credentials.Username());
-                        if (data != nullptr)
+                        usleep(25000);
+                        packet = Packet(buf);
+        
+                        CredentialsPayload credentials = CredentialsPayload(packet.GetData());
+                        if (!dataHandler->IsUserRegistered(credentials.Username()))
                         {
-                            if (data->GetPassword() == credentials.Password())
+                            UserData* user = new UserData(credentials.Username(), credentials.Password());
+                            dataHandler->RegisterUser(user);
+                            sessionData->UserLogged(user);
+                            std::cout << credentials.Username() << " has registered"<< std::endl;
+                            packet.CreateTrivial(PAYLOAD_REGISTERED);
+                            Send(&packet, sessionData->GetFd());
+                            NotifyUDPPort();
+                        }
+                        else
+                        {
+                            UserData* data = dataHandler->GetRegisteredUser(credentials.Username());
+                            if (data != nullptr)
                             {
-                                packet.CreateTrivial(PAYLOAD_LOGGED_IN);
-                                std::cout << credentials.Username() << " has logged in"<< std::endl;
-                                Send(&packet, sessionData->GetFd());
-                                sessionData->UserLogged(data);
-                                NotifyUDPPort();
+                                if (data->GetPassword() == credentials.Password())
+                                {
+                                    packet.CreateTrivial(PAYLOAD_LOGGED_IN);
+                                    std::cout << credentials.Username() << " has logged in"<< std::endl;
+                                    Send(&packet, sessionData->GetFd());
+                                    sessionData->UserLogged(data);
+                                    NotifyUDPPort();
+                                }
+                                else
+                                {
+                                    packet.CreateTrivial(PAYLOAD_INVALID_CREDENTIALS);
+                                    Send(&packet, sessionData->GetFd());
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    case PAYLOAD_MSG:
+                    {
+                        if (sessionData->IsLogged())
+                        {
+                            packet = Packet(buf);
+                            MessagePayload message = MessagePayload(packet.GetData());
+
+                            if(dataHandler->IsUserRegistered(message.To()))
+                            {
+                                ClientSessionData* destData;
+                                if ((destData = dataHandler->GetUserSession(message.To())) != nullptr)
+                                {
+                                    Send(&packet, destData->GetFd());
+                                    std::cout << message.From() << " whispers to " << message.To() << ": " << message.Message() << std::endl;
+                                    dataHandler->AddMessage(message);
+                                }
+                                else
+                                {
+                                    packet.CreateTrivial(PAYLOAD_OFFLINE_USR);
+                                    Send(&packet, sessionData->GetFd());
+                                }
                             }
                             else
                             {
-                                packet.CreateTrivial(PAYLOAD_INVALID_CREDENTIALS);
+                                packet.CreateTrivial(PAYLOAD_INEXISTENT_DEST);
                                 Send(&packet, sessionData->GetFd());
                             }
                         }
+                        break;
                     }
-                    break;
-                }
-                case PAYLOAD_MSG:
-                {
-                    if (sessionData->IsLogged())
+                    case PAYLOAD_AUDIO_HEADER:
                     {
                         packet = Packet(buf);
-                        MessagePayload message = MessagePayload(packet.GetData());
+                        AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
 
-                        if(dataHandler->IsUserRegistered(message.To()))
+                        //std::cout << vmhPayload.ToString() << std::endl;
+
+                        if(dataHandler->IsUserRegistered(vmhPayload.To()))
                         {
-                            ClientSessionData* destData;
-                            if ((destData = dataHandler->GetUserSession(message.To())) != nullptr)
+                            ClientSessionData *destData = dataHandler->GetUserSession(vmhPayload.To());
+                            if(destData != nullptr)
+                            {                
+                                udpThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
+                                udpThread.detach();
+                                packet.CreateTrivial(PAYLOAD_ACK);
+                                bool res = Send(&packet, sessionData->GetFd());      
+                            }
+                            else
                             {
-                                Send(&packet, destData->GetFd());
-                                std::cout << message.From() << " whispers to " << message.To() << ": " << message.Message() << std::endl;
-                                dataHandler->AddMessage(message);
+                                packet.CreateTrivial(PAYLOAD_OFFLINE_USR);
+                                Send(&packet, sessionData->GetFd());
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            packet.CreateTrivial(PAYLOAD_INEXISTENT_DEST);
+                            Send(&packet, sessionData->GetFd());
+                            break;
+                        }
+                        break;
+                    }
+                    case PAYLOAD_DED_DGRAM_PORT:
+                    {
+                        packet = Packet(buf);
+                        DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
+                        //std::cout<<"The client udp is on "<<portPayload.ToString()<<std::endl;
+                        sessionData->udpPort = portPayload.Port();
+                        break;
+                    }
+                    case PAYLOAD_USER:
+                    {
+                        packet = Packet(buf);
+                        UserPayload user = UserPayload(packet.GetData());
+                        if(dataHandler->IsUserRegistered(user.Username()))
+                        {
+                            if(dataHandler->GetUserSession(user.Username()) != nullptr)
+                            {
+                                packet.CreateTrivial(PAYLOAD_ACK);
+                                Send(&packet, sessionData->GetFd());
                             }
                             else
                             {
@@ -166,75 +234,11 @@ void ClientHandler::Loop()
                             packet.CreateTrivial(PAYLOAD_INEXISTENT_DEST);
                             Send(&packet, sessionData->GetFd());
                         }
-                    }
-                    break;
-                }
-                case PAYLOAD_AUDIO_HEADER:
-                {
-                    packet = Packet(buf);
-                    AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
-
-                    //std::cout << vmhPayload.ToString() << std::endl;
-
-                    if(dataHandler->IsUserRegistered(vmhPayload.To()))
-                    {
-                        ClientSessionData *destData = dataHandler->GetUserSession(vmhPayload.To());
-                        if(destData != nullptr)
-                        {                
-                            udpThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
-                            udpThread.detach();
-                            packet.CreateTrivial(PAYLOAD_ACK);
-                            bool res = Send(&packet, sessionData->GetFd());      
-                        }
-                        else
-                        {
-                            packet.CreateTrivial(PAYLOAD_OFFLINE_USR);
-                            Send(&packet, sessionData->GetFd());
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        packet.CreateTrivial(PAYLOAD_INEXISTENT_DEST);
-                        Send(&packet, sessionData->GetFd());
                         break;
                     }
-                    break;
+                    default:
+                        break;
                 }
-                case PAYLOAD_DED_DGRAM_PORT:
-                {
-                    packet = Packet(buf);
-                    DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
-                    //std::cout<<"The client udp is on "<<portPayload.ToString()<<std::endl;
-                    sessionData->udpPort = portPayload.Port();
-                    break;
-                }
-                case PAYLOAD_USER:
-                {
-                    packet = Packet(buf);
-                    UserPayload user = UserPayload(packet.GetData());
-                    if(dataHandler->IsUserRegistered(user.Username()))
-                    {
-                        if(dataHandler->GetUserSession(user.Username()) != nullptr)
-                        {
-                            packet.CreateTrivial(PAYLOAD_ACK);
-                            Send(&packet, sessionData->GetFd());
-                        }
-                        else
-                        {
-                            packet.CreateTrivial(PAYLOAD_OFFLINE_USR);
-                            Send(&packet, sessionData->GetFd());
-                        }
-                    }
-                    else
-                    {
-                        packet.CreateTrivial(PAYLOAD_INEXISTENT_DEST);
-                        Send(&packet, sessionData->GetFd());
-                    }
-                    break;
-                }
-                default:
-                    break;
             }
         }
         packet.Purge();
@@ -248,26 +252,31 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
 {
     int tot = 0;
     int packets = 0;
+    char buf[DGRAM_PACKET_SIZE + sizeof(int)];
     char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
     int lengths[header.Segments()] = { 0 };
     int i = 1, rec = 0;
-	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){ return shutdownReq.load() || i >= header.Segments() || rec >= (header.Segments() * 2); }, [&i, &rec, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead, int recycle)
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutdownReq.load() || i >= header.Segments() || rec >= (header.Segments() << 2); }, [this, &buf, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
     {
-		rec = recycle;
-		if(bytesRead < 0)
-		{
-			std::cout<<"Unable to read from UDP: "<<strerror(errno)<<std::endl;
-		}
-        if (bytesRead > 0)
+        if(pollin)
         {
-            int index = ReadUInt(buf);
-            tot += bytesRead;
-            packets++;
-            i++;
-            lengths[index] = bytesRead - sizeof(int);
-            memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
-			std::cout<<i<<std::endl;
+            int bytesRead = read(polledFds[UDP_IDX].fd, buf, DGRAM_PACKET_SIZE + sizeof(int));
+            if(bytesRead < 0)
+            {
+                std::cout<<"Unable to read from UDP: "<<strerror(errno)<<std::endl;
+            }
+            if (bytesRead > 0)
+            {
+                int index = ReadUInt(buf);
+                tot += bytesRead;
+                packets++;
+                i++;
+                lengths[index] = bytesRead - sizeof(int);
+                memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
+                std::cout<<i<<std::endl;
+            }
         }
+		
     });
     std::cout<<"Received audio message: "<<header.ToString()<<std::endl;
     //std::cout << "Bytes: " << tot << ", packets: " << packets << std::endl;
