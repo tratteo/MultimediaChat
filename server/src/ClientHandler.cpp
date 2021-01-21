@@ -284,7 +284,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         delete[] temp;
         packet.Purge();
 
-        usleep(25000);
+        usleep(250000);
         char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
         int packetsSent = 0;
         int totalSent = 0;

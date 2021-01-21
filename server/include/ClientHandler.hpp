@@ -21,7 +21,7 @@
 #include "../include/DatabaseHandler.hpp"
 #define TCP_IDX 0
 #define UDP_IDX 1
-#define POLL_DELAY 10
+#define POLL_DELAY 25
 #define POLLED_SIZE 2
 #define BUF_SIZE 512
 

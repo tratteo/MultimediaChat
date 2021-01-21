@@ -85,7 +85,7 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
 	int lengths[header.Segments()] = { 0 };
 	int i = 1, received = 0;
-	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){return shutDown.load() || i > header.Segments();}, [&i, &received, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead)
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){return shutDown.load() || i >= header.Segments();}, [&i, &received, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead)
     {
         if (bytesRead > 0)
         {
@@ -271,7 +271,7 @@ void Client::SendAudio(std::string dest)
 		AppendToConsole("Invalid dest for audio", false);
 		return;
 	}
-	usleep(25000);
+	usleep(50000);
 	int packetsSent = 0;
 	int totalSent = 0;
 	int index = 0;
