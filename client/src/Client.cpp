@@ -22,10 +22,20 @@ Client::Client(char* servIp)
 Client::~Client()
 {
     shutDown.store(true);
-    Packet packet = Packet(PAYLOAD_DISCONNECT);
-	Send(&packet, clientSocket->GetFd());
-	packet.Purge();
-
+	try
+	{
+		if(IsConnected())
+		{
+			Packet packet = Packet(PAYLOAD_DISCONNECT);
+			Send(&packet, clientSocket->GetFd());
+			packet.Purge();
+			connected = false;
+		}
+	}
+	catch(const std::exception& e)
+	{
+	}
+	
 	if(loopThread.joinable())
 	{
 		loopThread.join();
@@ -279,7 +289,7 @@ void Client::SendAudio(std::string dest)
 		int sent = sendto(udpSocket->GetFd(), buffer, bytesRead + sizeof(int), MSG_CONFIRM, (struct sockaddr*)&addr, sizeof(addr));
 		if (sent == -1)
 		{
-			std::cout << strerror(errno);
+			std::cout << "Unable to send audio: "<<strerror(errno);
 			break;
 		}
 		int amount = (index * 100) / amhPayload.Segments();
@@ -306,6 +316,7 @@ void Client::Loop()
         std::cerr<<"Unble to connect to server"<<std::endl;
         return;
     }
+	connected = true;
     receiveDaemon = std::thread(&Client::ReceiveDaemon, this);
 
     LoginRoutine();

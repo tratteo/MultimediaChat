@@ -33,6 +33,7 @@ class Client
     ~Client();
     void Run();
     void Join();
+    inline bool IsConnected() const { return connected; }
 
     inline CSocket *GetTCP() const { return clientSocket; } 
     inline UDPSocket* GetUDP() const {return udpSocket;}
@@ -56,6 +57,7 @@ class Client
     char* serv_ip;
     int udpPort;
     bool logged = false;
+    bool connected = false;
     std::atomic<bool> shutDown;
 
     CSocket* clientSocket;
