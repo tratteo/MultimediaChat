@@ -85,8 +85,13 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
 	int lengths[header.Segments()] = { 0 };
 	int i = 1, received = 0;
+	std::cout<<"Into thread: "<<header.ToString()<<std::endl;
 	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, DGRAM_PACKET_SIZE + sizeof(int), [&](){return shutDown.load() || i >= header.Segments();}, [&i, &received, &packets, &tot, &matrix, &lengths](char* buf, int bytesRead)
     {
+		if(bytesRead < 0)
+		{
+			std::cout<<"Unable to read from UDP: "<<strerror(errno)<<std::endl;
+		}
         if (bytesRead > 0)
         {
             int index = ReadUInt(buf);
@@ -95,6 +100,7 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
             i++;
             lengths[index] = bytesRead - sizeof(int);
             memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
+			//std::cout<<i<<std::endl;
         }
     });
 	AppendToConsole("Received audio: " + header.ToString(), false);
@@ -199,6 +205,7 @@ void Client::ReceiveDaemon()
 					{
 						audioRecvThread.join();
 					}
+					std::cout<<"Received audio: "<<vmhPayload.ToString()<<std::endl;
 					audioRecvThread = std::thread(&Client::ReceiveAudio, this, vmhPayload);
 					packet.Purge();
 					break;
@@ -302,7 +309,7 @@ void Client::SendAudio(std::string dest)
 		index++;
 		totalSent += sent;
 		packetsSent++;
-		usleep(250);
+		usleep(1000);
 	}
 	std::cout<<"\n\r";
 	file.close();
