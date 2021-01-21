@@ -284,7 +284,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         delete[] temp;
         packet.Purge();
 
-        usleep(250000);
+        usleep(1000000);
         char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
         int packetsSent = 0;
         int totalSent = 0;
@@ -328,7 +328,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
             usleep(10000);
 	    }
         std::cout<<"\n\r";
-        //std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;
+        std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;
         file.close();
         delete[] buffer;
     }

@@ -103,6 +103,7 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 			std::cout<<i<<std::endl;
         }
     });
+	std::cout<<"Tot: "<<tot<<", packets: "<<packets<<std::endl;
 	AppendToConsole("Received audio: " + header.ToString(), false);
 	std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
 	for (int i = 0; i < header.Segments(); i++)
