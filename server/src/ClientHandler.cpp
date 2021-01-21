@@ -284,7 +284,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         delete[] temp;
         packet.Purge();
 
-        usleep(500000);
+        usleep(250000);
         char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
         int packetsSent = 0;
         int totalSent = 0;
@@ -302,7 +302,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         addr.sin_addr.s_addr = inet_addr(destData->GetIp());
         while (!file.eof())
         {
-            if(shutdownReq)
+            if(shutdownReq.load())
             {
                 break;
             }
@@ -325,7 +325,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
             index++;
             totalSent += sent;
             packetsSent++;
-            usleep(1000);
+            usleep(DGRAM_SEND_DELAY);
 	    }
         std::cout<<"\n\r";
         std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;

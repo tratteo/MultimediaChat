@@ -310,7 +310,7 @@ void Client::SendAudio(std::string dest)
 		index++;
 		totalSent += sent;
 		packetsSent++;
-		usleep(1000);
+		usleep(DGRAM_SEND_DELAY);
 	}
 	std::cout<<std::endl;
 	file.close();
