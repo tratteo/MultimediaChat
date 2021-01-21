@@ -2,8 +2,8 @@
 #include <alsa/asoundlib.h>
 #include "SoundPlayer.hpp"
 #include "SoundRegistrer.hpp"
-#define DGRAM_PACKET_SIZE 1024
-#define DGRAM_SEND_DELAY 500
+#define DGRAM_PACKET_SIZE 2048
+#define DGRAM_SEND_DELAY 850
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #define CHANNELS 2
 #define SAMPLE_RATE 44100
