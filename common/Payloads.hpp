@@ -15,6 +15,7 @@
 #define PAYLOAD_ACK 10
 #define PAYLOAD_DED_DGRAM_PORT 11
 #define PAYLOAD_USER 12
+#define PAYLOAD_DUPLICATE_USER 13
 
 
 class Payload

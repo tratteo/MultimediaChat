@@ -120,21 +120,30 @@ void ClientHandler::Loop()
                         }
                         else
                         {
-                            UserData* data = dataHandler->GetRegisteredUser(credentials.Username());
-                            if (data != nullptr)
+                            ClientSessionData *ses;
+                            if((ses = dataHandler->GetUserSession(credentials.Username())) != nullptr)
                             {
-                                if (data->GetPassword() == credentials.Password())
+                                packet.CreateTrivial(PAYLOAD_DUPLICATE_USER);
+                                Send(&packet, sessionData->GetFd());
+                            }
+                            else
+                            {
+                                UserData* data = dataHandler->GetRegisteredUser(credentials.Username());
+                                if (data != nullptr)
                                 {
-                                    packet.CreateTrivial(PAYLOAD_LOGGED_IN);
-                                    std::cout << credentials.Username() << " has logged in"<< std::endl;
-                                    Send(&packet, sessionData->GetFd());
-                                    sessionData->UserLogged(data);
-                                    NotifyUDPPort();
-                                }
-                                else
-                                {
-                                    packet.CreateTrivial(PAYLOAD_INVALID_CREDENTIALS);
-                                    Send(&packet, sessionData->GetFd());
+                                    if (data->GetPassword() == credentials.Password())
+                                    {
+                                        packet.CreateTrivial(PAYLOAD_LOGGED_IN);
+                                        std::cout << credentials.Username() << " has logged in"<< std::endl;
+                                        Send(&packet, sessionData->GetFd());
+                                        sessionData->UserLogged(data);
+                                        NotifyUDPPort();
+                                    }
+                                    else
+                                    {
+                                        packet.CreateTrivial(PAYLOAD_INVALID_CREDENTIALS);
+                                        Send(&packet, sessionData->GetFd());
+                                    }
                                 }
                             }
                         }
@@ -153,7 +162,7 @@ void ClientHandler::Loop()
                                 if ((destData = dataHandler->GetUserSession(message.To())) != nullptr)
                                 {
                                     Send(&packet, destData->GetFd());
-                                    std::cout << message.From() << " whispers to " << message.To() << ": " << message.Message() << std::endl;
+                                    std::cout << message.From() << " > " << message.To() << ": " << message.Message() << std::endl;
                                     dataHandler->AddMessage(message);
                                 }
                                 else
@@ -255,9 +264,10 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
     char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
     int lengths[header.Segments()] = { 0 };
     int i = 1, rec = 0;
+    int timeout = (header.Segments() << 2) / POLL_DELAY;
 
     //A huge lambda capture list :D
-	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutdownReq.load() || i >= header.Segments() || rec >= (header.Segments() << 2); }, [this, &buf, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutdownReq.load() || i >= header.Segments() || rec >= timeout; }, [this, &buf, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
     {
         if(pollin)
         {
@@ -341,10 +351,14 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
                 std::cout << strerror(errno);
                 exit(1);
             }
-            int amount = (index * 100) / header.Segments();
+            int amount = (index * 20) / header.Segments();
             for(int i = 0; i < amount; i++)
             {
                 std::cout<<"#";
+            }
+            for(int i = amount; i < 20; i++)
+            {
+                std::cout<<"-";
             }
             std::cout<<">";
             std::cout<<"\r";
