@@ -266,7 +266,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
     char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
     int lengths[header.Segments()] = { 0 };
     int i = 1, rec = 0;
-    int timeout = (header.Segments() << 2) / POLL_DELAY;
+    int timeout = (header.Segments() << 4) / POLL_DELAY;
 
     //A huge lambda capture list :D
 	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutdownReq.load() || i >= header.Segments() || rec >= timeout; }, [this, &buf, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
@@ -292,6 +292,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
                 memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
             }
         }
+        rec = recycle;
 		
     });
     packets++;
@@ -353,12 +354,12 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
                 std::cout << strerror(errno);
                 exit(1);
             }
-            int amount = (index * 20) / header.Segments();
+            int amount = (index * 50) / header.Segments();
             for(int i = 0; i < amount; i++)
             {
                 std::cout<<"#";
             }
-            for(int i = amount; i < 20 - 1; i++)
+            for(int i = amount; i < 50 - 1; i++)
             {
                 std::cout<<"-";
             }

@@ -92,12 +92,11 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
 	int lengths[header.Segments()] = { 0 };
 	int i = 1, rec = 0;
-	int timeout = (header.Segments() << 2) / POLL_DELAY;
+	int timeout = (header.Segments() << 4) / POLL_DELAY;
 
 	//A huge lambda capture list :D
 	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutDown.load() || i >= header.Segments() || rec >= timeout; }, [&buf, this, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
     {
-		rec = recycle;
 		if(pollin)
 		{
 			int bytesRead = read(this->polledFds[UDP_IDX].fd, buf, DGRAM_PACKET_SIZE + sizeof(int));
@@ -119,6 +118,7 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 				memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
 			}
 		}
+		rec = recycle;
     });
 	packets++;
 	if(packets < header.Segments())
@@ -144,7 +144,6 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	delete player;
 	return;
 }
-
 
 void Client::AppendToConsole(std::string line, bool inputRequest)
 {
@@ -351,12 +350,12 @@ void Client::SendAudio(std::string dest)
 		}
 
 		//Little graphic trick, not working so good tho 
-		int amount = (index * 20) / amhPayload.Segments();
+		int amount = (index * 50) / amhPayload.Segments();
 		for(int i = 0; i < amount; i++)
 		{
 			std::cout<<"#";
 		}
-		for(int i = amount; i < 20 - 1; i++)
+		for(int i = amount; i < 50 - 1; i++)
 		{
 			std::cout<<"-";
 		}
