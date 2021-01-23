@@ -12,6 +12,8 @@ Client *client;
 
 int main(int argv, char** argc)
 {
+	//Making the main the smaller i can :-)
+
 	if (argv < 2)
 	{
 		handle_fatal_error("No arguments found");

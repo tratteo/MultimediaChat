@@ -2,15 +2,19 @@
 
 Client::Client(char* servIp)
 {
+	//Create the TCP and UDP sockets
 	clientSocket = new CSocket(servIp, 8080);
 	this->serv_ip = servIp;
+
 	//Horrible workaround :-)
 	UDPSocket *sock = new UDPSocket(0);
     int port = sock->GetPort();
     delete sock;
     udpSocket = new UDPSocket(port);
+
 	shutDown.store(false);
 
+	//Setup the poll fds for the poll()
 	polledFds[STDIN_IDX].fd = 0;
 	polledFds[STDIN_IDX].events = POLLIN;
 	polledFds[TCP_IDX].fd = clientSocket->GetFd();
@@ -36,6 +40,7 @@ Client::~Client()
 	{
 	}
 	
+	//Join the joinable
 	if(loopThread.joinable())
 	{
 		loopThread.join();
@@ -46,13 +51,14 @@ Client::~Client()
     }
 	if(loginThread.joinable())
 	{
-		//std::cerr<<"Joining login"<<std::endl;
 		loginThread.join();
 	}
 	if(audioRecvThread.joinable())
 	{
 		audioRecvThread.join();
 	}
+
+	//Clear junk
     delete clientSocket;
     delete udpSocket;
 }
@@ -79,17 +85,18 @@ void Client::LoginRoutine()
 
 void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 {
+	//Prepare the data structures and start receiving packets
     char buf[DGRAM_PACKET_SIZE +  sizeof(int)] = { 0 };
 	int tot = 0;
 	int packets = 0;
 	char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
 	int lengths[header.Segments()] = { 0 };
 	int i = 1, rec = 0;
-	std::cout<<"Into thread: "<<header.ToString()<<std::endl;
+
+	//A huge lambda capture list :D
 	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutDown.load() || i >= header.Segments() || rec >= (header.Segments() << 2); }, [&buf, this, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
     {
 		rec = recycle;
-		//std::cout<<rec<<std::endl;
 		if(pollin)
 		{
 			int bytesRead = read(this->polledFds[UDP_IDX].fd, buf, DGRAM_PACKET_SIZE + sizeof(int));
@@ -99,16 +106,18 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 			}
 			if (bytesRead > 0)
 			{
+				//Read the index of the packet
 				int index = ReadUInt(buf);
+
 				tot += bytesRead;
 				packets++;
 				i++;
+
+				//Update the structures
 				lengths[index] = bytesRead - sizeof(int);
 				memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
-				std::cout<<i<<std::endl;
 			}
 		}
-		
     });
 	packets++;
 	if(packets < header.Segments())
@@ -120,17 +129,21 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	float percentage = (float) lost / header.Segments();
 	AppendToConsole("Received: "+std::to_string(packets)+" segments, lost: "+std::to_string(lost)+"("+std::to_string(percentage)+"%)",false);
 	std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
+
+	//Save the file to disk
 	for (int i = 0; i < header.Segments(); i++)
 	{
 		out.write(matrix[i], lengths[i]);
 	}
 	out.close();
 
+	//Play the received sound
 	SoundPlayer *player = new SoundPlayer();
 	player->PlaySound();
 	delete player;
 	return;
 }
+
 
 void Client::AppendToConsole(std::string line, bool inputRequest)
 {
@@ -267,10 +280,11 @@ void Client::SendAudio(std::string dest)
 	}
 	std::streamsize size = file.tellg();
 	file.seekg(0, std::ios::beg);
+
+	//Prepare the header of the audio
 	char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
 	int segs = ceil((float)size / DGRAM_PACKET_SIZE);
 
-	//Handshake
 	Packet packet;
 	AudioMessageHeaderPayload amhPayload = AudioMessageHeaderPayload(username, dest, segs, size);
 	AppendToConsole("Audio: " + amhPayload.ToString(), false);
@@ -285,6 +299,8 @@ void Client::SendAudio(std::string dest)
 	bool ack = false;
 	acks.push_back(&ack);
 	bool stop = false;
+
+	//Wait for server ack, if the user is offline or disappeared O.O, the server will notify us
 	while (!ack)
 	{
 		if(lastReceived == PAYLOAD_INEXISTENT_DEST || lastReceived == PAYLOAD_OFFLINE_USR)
@@ -298,6 +314,7 @@ void Client::SendAudio(std::string dest)
 		AppendToConsole("Invalid dest for audio", false);
 		return;
 	}
+
 	usleep(50000);
 	int packetsSent = 0;
 	int totalSent = 0;
@@ -308,6 +325,7 @@ void Client::SendAudio(std::string dest)
 	addr.sin_addr.s_addr = inet_addr(serv_ip);
 	addr.sin_family = AF_INET;
 	float progress = 0;
+
 	while (!file.eof())
 	{
 		PutUInt(buffer, index);
@@ -319,6 +337,8 @@ void Client::SendAudio(std::string dest)
 			std::cout << "Unable to send audio: "<<strerror(errno);
 			break;
 		}
+
+		//Little graphic trick, not working so good tho 
 		int amount = (index * 100) / amhPayload.Segments();
 		for(int i = 0; i < amount; i++)
 		{
@@ -394,8 +414,9 @@ void Client::Loop()
 	// Can't use the poll routine cause i need the goto
 	while(!shutDown.load())
 	{
-		int res = poll(polledFds, 3, 200);
-		if(polledFds[0].revents & POLLIN)
+		//Pool the stdin
+		int res = poll(polledFds, POLLED_SIZE, POLL_DELAY);
+		if(polledFds[STDIN_IDX].revents & POLLIN)
 		{
 			std::getline(std::cin, buf);
 			if(buf == "/c")
@@ -408,6 +429,7 @@ void Client::Loop()
 			}
 			else if (buf == "/r")
 			{
+				//Start the registration and send the audio
 				SoundRegistrer *registrer = new SoundRegistrer();
 				AppendToConsole("Press ENTER to stop the registration\nRegistering...", false);
 				registrer->Register([]() -> bool { std::cin.ignore(); return true; });
@@ -416,6 +438,7 @@ void Client::Loop()
 			}
 			else
 			{
+				//Create and send a text message
 				MessagePayload messagePayload = MessagePayload(username, currentDest, buf);
 				char* temp = messagePayload.Serialize();
 				packet.FromData(PAYLOAD_MSG, temp, messagePayload.Size());

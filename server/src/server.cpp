@@ -8,14 +8,14 @@
 #include "../include/DatabaseHandler.hpp"
 
 void CloseService(int);
-void OnHandlerDisconnect(ClientHandler* handler);
 DataBaseHandler* dataHandler;
 CSocket* servSocket;
 std::list<ClientHandler*> handlers;
-std::list<std::thread> clientThreads;
 
 int main()
 {
+    //Making the main the smaller i can :-)
+    
     servSocket = new CSocket(8080);
 
 	signal(SIGINT, CloseService);
@@ -30,17 +30,12 @@ int main()
         if((data = servSocket->AcceptConnection()) != nullptr)
         {
             std::cout << "New connection accepted, handling..." << std::endl;
-            ClientHandler *handler = new ClientHandler(data, dataHandler, OnHandlerDisconnect);
+            ClientHandler *handler = new ClientHandler(data, dataHandler);
             handler->HandleConnection();
             handlers.push_front(handler);
             dataHandler->UserConnected(data);
         }
     }
-}
-
-void OnHandlerDisconnect(ClientHandler* handler)
-{
-    handlers.remove(handler);
 }
 
 void CloseService(int signal)

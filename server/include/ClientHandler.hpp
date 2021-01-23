@@ -21,21 +21,21 @@
 #include "../include/DatabaseHandler.hpp"
 #define TCP_IDX 0
 #define UDP_IDX 1
-#define POLL_DELAY 1
+#define POLL_DELAY 20
 #define POLLED_SIZE 2
 #define BUF_SIZE 512
 
 class ClientHandler
 {
     public:
-    ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler, void ( *OnDisconnect )(ClientHandler* ));
+    ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler);
     ~ClientHandler();
     void HandleConnection();
     void CloseConnection();
 
     private:
     bool active = false;
-    struct pollfd polledFds[2];
+    struct pollfd polledFds[POLLED_SIZE];
     void NotifyUDPPort();
     void UDPReceive(AudioMessageHeaderPayload amhPayload);
     ClientSessionData *sessionData;
@@ -44,6 +44,5 @@ class ClientHandler
     bool closedLocal = true;
     std::thread mainThread;
     std::thread udpThread;
-    void ( *OnDisconnect )(ClientHandler*);
     void Loop();
 };

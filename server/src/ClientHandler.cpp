@@ -1,10 +1,9 @@
 #include "../include/ClientHandler.hpp"
 
-ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler, void (*OnDisconnect)(ClientHandler*))
+ClientHandler::ClientHandler(ClientSessionData *sessionData, DataBaseHandler *dataHandler)
 {
     this->sessionData = sessionData;
     this->dataHandler = dataHandler;
-    this->OnDisconnect = OnDisconnect;
     shutdownReq.store(false);
 
     polledFds[TCP_IDX].fd = sessionData->GetFd();
@@ -17,14 +16,15 @@ ClientHandler::~ClientHandler()
 {
     shutdownReq.store(true);
 
+    //Join the joinable
+
     if(mainThread.joinable())
     {
-        //std::cout<<"Joining main"<<std::endl;
         mainThread.join();
     }
     if(udpThread.joinable())
     {
-        //std::cout<<"Joining udp"<<std::endl;
+
         udpThread.join();
     }
 
@@ -67,13 +67,12 @@ void ClientHandler::CloseConnection()
     }
 
     dataHandler->UserDisconnected(sessionData);
-    //OnDisconnect(this);
     active = false;
 }
 
 void ClientHandler::NotifyUDPPort()
 {
-    usleep(100000);
+    usleep(50000);
     Packet packet;
     DgramPortPayload portPayload = DgramPortPayload(sessionData->GetUdp()->GetPort());
     char* temp = portPayload.Serialize();
@@ -87,7 +86,6 @@ void ClientHandler::Loop()
 {
     Packet packet;
     char buf[BUF_SIZE];
-
     PollFdLoop(polledFds, POLLED_SIZE, TCP_IDX, POLL_DELAY, [&](){return shutdownReq.load();}, [this, &buf, &packet](bool pollin, int recycle)
     {
         if(pollin)
@@ -252,10 +250,13 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
 {
     int tot = 0;
     int packets = 0;
+    //Prepare the data structures
     char buf[DGRAM_PACKET_SIZE + sizeof(int)];
     char matrix[header.Segments()][DGRAM_PACKET_SIZE] = { 0 };
     int lengths[header.Segments()] = { 0 };
     int i = 1, rec = 0;
+
+    //A huge lambda capture list :D
 	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutdownReq.load() || i >= header.Segments() || rec >= (header.Segments() << 2); }, [this, &buf, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
     {
         if(pollin)
@@ -267,13 +268,16 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
             }
             if (bytesRead > 0)
             {
+                //Read the index of the packet
                 int index = ReadUInt(buf);
+
                 tot += bytesRead;
                 packets++;
                 i++;
+
+                //Update the structures
                 lengths[index] = bytesRead - sizeof(int);
                 memcpy(matrix[index], buf + sizeof(int), DGRAM_PACKET_SIZE);
-                std::cout<<i<<std::endl;
             }
         }
 		
@@ -288,6 +292,8 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
 	float percentage = (float) lost / header.Segments();
 	std::cout<<"Received: "<<packets<<" segments, lost: "<<lost<<" ("<<percentage<<"%)"<<std::endl;
     std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
+    
+    //Save the file to disk
     for (int i = 0; i < header.Segments(); i++)
     {
         out.write(matrix[i], lengths[i]);
