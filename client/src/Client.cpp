@@ -265,7 +265,13 @@ void Client::ReceiveDaemon()
 					}
 					case PAYLOAD_DUPLICATE_USER:
 					{
+						logged = false;
 						AppendToConsole("Wait a user with the same name is already online :O", false);
+						if (loginThread.joinable())
+						{
+							loginThread.join();
+						}
+						loginThread = std::thread(&Client::LoginRoutine, this);
 						break;
 					}
 				}
@@ -350,7 +356,7 @@ void Client::SendAudio(std::string dest)
 		{
 			std::cout<<"#";
 		}
-		for(int i = amount; i < 20; i++)
+		for(int i = amount; i < 20 - 1; i++)
 		{
 			std::cout<<"-";
 		}
@@ -404,7 +410,7 @@ void Client::Loop()
 	while(!ack)
 	{
 		if(shutDown.load()) return;
-		if(status == PAYLOAD_INEXISTENT_DEST || status == PAYLOAD_OFFLINE_USR)
+		if(status == PAYLOAD_INEXISTENT_DEST || status == PAYLOAD_OFFLINE_USR || status == PAYLOAD_DUPLICATE_USER)
 		{
 			acks.remove(&ack);
 			goto Addressee;

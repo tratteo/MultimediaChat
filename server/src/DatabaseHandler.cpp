@@ -113,6 +113,7 @@ void DataBaseHandler::UserDisconnected(ClientSessionData* data)
 
 UserData* DataBaseHandler::GetRegisteredUser(std::string username)
 {
+    if(registeredUsers.size() == 0) return nullptr;
     const std::list<UserData*>::iterator it = std::find_if(registeredUsers.begin(), registeredUsers.end(), [&] (UserData* data) -> bool { return username == data->GetUsername(); });
     if (it != registeredUsers.end())
     {
@@ -126,6 +127,7 @@ UserData* DataBaseHandler::GetRegisteredUser(std::string username)
 
 ClientSessionData* DataBaseHandler::GetUserSession(std::string username)
 {
+    if(connectedUsers.size() == 0) return nullptr;
     std::list<ClientSessionData*>::iterator it = std::find_if(connectedUsers.begin(), connectedUsers.end(), [&] (ClientSessionData* data) -> bool {return username == data->GetOwner()->GetUsername(); });
     if (it != connectedUsers.end())
     {

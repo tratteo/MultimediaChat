@@ -116,6 +116,7 @@ void ClientHandler::Loop()
                             std::cout << credentials.Username() << " has registered"<< std::endl;
                             packet.CreateTrivial(PAYLOAD_REGISTERED);
                             Send(&packet, sessionData->GetFd());
+                            dataHandler->UserConnected(sessionData);
                             NotifyUDPPort();
                         }
                         else
@@ -137,6 +138,7 @@ void ClientHandler::Loop()
                                         std::cout << credentials.Username() << " has logged in"<< std::endl;
                                         Send(&packet, sessionData->GetFd());
                                         sessionData->UserLogged(data);
+                                        dataHandler->UserConnected(sessionData);
                                         NotifyUDPPort();
                                     }
                                     else
@@ -356,7 +358,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
             {
                 std::cout<<"#";
             }
-            for(int i = amount; i < 20; i++)
+            for(int i = amount; i < 20 - 1; i++)
             {
                 std::cout<<"-";
             }

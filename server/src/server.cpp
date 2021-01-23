@@ -33,7 +33,6 @@ int main()
             ClientHandler *handler = new ClientHandler(data, dataHandler);
             handler->HandleConnection();
             handlers.push_front(handler);
-            dataHandler->UserConnected(data);
         }
     }
 }
