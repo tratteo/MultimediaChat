@@ -19,6 +19,7 @@ int main(int argv, char** argc)
 		handle_fatal_error("No arguments found");
 	}
 
+	signal(SIGPIPE, SIG_IGN);
 	signal(SIGINT, CloseService);
 	signal(SIGTERM, CloseService);
 

@@ -15,11 +15,11 @@ class ClientSessionData
     inline UserData* GetOwner() const { return this->owner; };
     inline bool IsLogged() const { return logged; };
     inline UDPSocket* GetUdp() const {return udpSocket;}
-    int udpPort;
+    int udpPort = 0;
     private:
     int fd;
-    UDPSocket *udpSocket;
+    UDPSocket *udpSocket = nullptr;
     char* ip;
     bool logged;
-    UserData* owner;
+    UserData* owner = nullptr;
 };

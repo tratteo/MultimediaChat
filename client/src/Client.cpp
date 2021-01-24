@@ -95,7 +95,7 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 	int timeout = (header.Segments() << 4) / POLL_DELAY;
 
 	//A huge lambda capture list :D
-	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutDown.load() || i >= header.Segments() || rec >= timeout; }, [&buf, this, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutDown.load() || i > header.Segments() || rec >= timeout; }, [&buf, this, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
     {
 		if(pollin)
 		{
@@ -120,15 +120,14 @@ void Client::ReceiveAudio(AudioMessageHeaderPayload header)
 		}
 		rec = recycle;
     });
-	packets++;
 	if(packets < header.Segments())
 	{
 		AppendToConsole("Some packets may have been lost :(",false);
 	}
 	AppendToConsole("Original audio: " + header.ToString(), false);
 	int lost = header.Segments() - packets;
-	float percentage = (float) lost / header.Segments();
-	AppendToConsole("Received: "+std::to_string(packets)+" segments, lost: "+std::to_string(lost)+"("+std::to_string(percentage)+"%)",false);
+	float percentage = lost / (float)header.Segments();
+	AppendToConsole("Received: "+std::to_string(packets)+" segments, lost: "+std::to_string(lost)+"("+std::to_string(percentage*100)+"%)",false);
 	std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
 
 	//Save the file to disk
@@ -293,7 +292,7 @@ void Client::SendAudio(std::string dest)
 	file.seekg(0, std::ios::beg);
 
 	//Prepare the header of the audio
-	char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
+	char buffer[DGRAM_PACKET_SIZE + sizeof(int)];
 	int segs = ceil((float)size / DGRAM_PACKET_SIZE);
 
 	Packet packet;
@@ -305,8 +304,6 @@ void Client::SendAudio(std::string dest)
 	delete[] temp;
 	packet.Purge();
 
-	char buf[BUF_SIZE] = { 0 };
-	int bytesRead = 0;
 	bool ack = false;
 	acks.push_back(&ack);
 	bool stop = false;
@@ -332,6 +329,7 @@ void Client::SendAudio(std::string dest)
 	int index = 0;
 	AppendToConsole("Sending audio...", false);
 	struct sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
 	addr.sin_port = htons(udpPort);
 	addr.sin_addr.s_addr = inet_addr(serv_ip);
 	addr.sin_family = AF_INET;
@@ -349,7 +347,7 @@ void Client::SendAudio(std::string dest)
 			break;
 		}
 
-		//Little graphic trick, not working so good tho 
+		//Little graphic trick
 		int amount = (index * 50) / amhPayload.Segments();
 		for(int i = 0; i < amount; i++)
 		{
@@ -367,8 +365,9 @@ void Client::SendAudio(std::string dest)
 		usleep(DGRAM_SEND_DELAY);
 	}
 	std::cout<<std::endl;
+	std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;
 	file.close();
-	delete[] buffer;
+	return;
 }
 
 void Client::Loop()
@@ -434,22 +433,22 @@ void Client::Loop()
 		if(polledFds[STDIN_IDX].revents & POLLIN)
 		{
 			std::getline(std::cin, buf);
-			if(buf == "/c")
+			if(buf == CHANGE_DEST_KEY)
 			{
 				goto Addressee;
 			}
-			else if (buf == "/q")
+			else if (buf == QUIT_KEY)
 			{
 				break;
 			}
-			else if (buf == "/r")
+			else if (buf == REGISTER_KEY)
 			{
+				SoundRegistrer *reg = new SoundRegistrer();
 				//Start the registration and send the audio
-				SoundRegistrer *registrer = new SoundRegistrer();
 				AppendToConsole("Press ENTER to stop the registration\nRegistering...", false);
-				registrer->Register([]() -> bool { std::cin.ignore(); return true; });
+				reg->Register([]() -> bool { std::cin.ignore(); return true; });
 				SendAudio(currentDest);
-				delete registrer;
+				delete reg;
 			}
 			else
 			{

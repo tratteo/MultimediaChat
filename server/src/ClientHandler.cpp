@@ -24,7 +24,6 @@ ClientHandler::~ClientHandler()
     }
     if(udpThread.joinable())
     {
-
         udpThread.join();
     }
 
@@ -186,17 +185,20 @@ void ClientHandler::Loop()
                         packet = Packet(buf);
                         AudioMessageHeaderPayload vmhPayload = AudioMessageHeaderPayload(packet.GetData());
 
-                        //std::cout << vmhPayload.ToString() << std::endl;
-
                         if(dataHandler->IsUserRegistered(vmhPayload.To()))
                         {
                             ClientSessionData *destData = dataHandler->GetUserSession(vmhPayload.To());
                             if(destData != nullptr)
-                            {                
+                            {       
+                                if(udpThread.joinable())
+                                {
+                                    udpThread.join();
+                                }         
                                 udpThread = std::thread(&ClientHandler::UDPReceive, this, vmhPayload);
-                                udpThread.detach();
+
                                 packet.CreateTrivial(PAYLOAD_ACK);
                                 bool res = Send(&packet, sessionData->GetFd());      
+                                udpThread.join();
                             }
                             else
                             {
@@ -217,7 +219,6 @@ void ClientHandler::Loop()
                     {
                         packet = Packet(buf);
                         DgramPortPayload portPayload = DgramPortPayload(packet.GetData());
-                        //std::cout<<"The client udp is on "<<portPayload.ToString()<<std::endl;
                         sessionData->udpPort = portPayload.Port();
                         break;
                     }
@@ -269,7 +270,7 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
     int timeout = (header.Segments() << 4) / POLL_DELAY;
 
     //A huge lambda capture list :D
-	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutdownReq.load() || i >= header.Segments() || rec >= timeout; }, [this, &buf, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
+	PollFdLoop(polledFds, POLLED_SIZE, UDP_IDX, POLL_DELAY, [&](){ return shutdownReq.load() || i > header.Segments() || rec >= timeout; }, [this, &buf, &i, &rec, &packets, &tot, &matrix, &lengths](bool pollin, int recycle)
     {
         if(pollin)
         {
@@ -295,15 +296,15 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         rec = recycle;
 		
     });
-    packets++;
     if(packets < header.Segments())
 	{
 		std::cout<<"Some packets may have been lost :("<<std::endl;
 	}
+    std::flush(std::cout);
 	std::cout<<"Original audio: " + header.ToString()<<std::endl;
 	int lost = header.Segments() - packets ;
-	float percentage = (float) lost / header.Segments();
-	std::cout<<"Received: "<<packets<<" segments, lost: "<<lost<<" ("<<percentage<<"%)"<<std::endl;
+	float percentage = lost / (float)header.Segments();
+	std::cout<<"Received: "<<packets<<" segments, lost: "<<lost<<" ("<<percentage*100<<"%)"<<std::endl;
     std::ofstream out(RECEIVED_FILE, std::ios::trunc | std::ios::out);
     
     //Save the file to disk
@@ -323,8 +324,9 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
         delete[] temp;
         packet.Purge();
 
-        usleep(500000);
-        char* buffer = new char[DGRAM_PACKET_SIZE + sizeof(int)];
+        usleep(200000);
+        memset(&buf, 0 ,sizeof(buf));
+    
         int packetsSent = 0;
         int totalSent = 0;
         int index = 0;
@@ -336,45 +338,49 @@ void ClientHandler::UDPReceive(AudioMessageHeaderPayload header)
             return;
         }
         struct sockaddr_in addr;
+        memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
         addr.sin_port = htons(destData->udpPort);
         addr.sin_addr.s_addr = inet_addr(destData->GetIp());
-        while (!file.eof())
+        while (file)
         {
             if(shutdownReq.load())
             {
                 break;
             }
-            PutUInt(buffer, index);
-            file.read(buffer + sizeof(int), DGRAM_PACKET_SIZE);
+            file.read(buf + sizeof(int), DGRAM_PACKET_SIZE);
             std::streamsize bytesRead = file.gcount();
-            int sent = sendto(destData->GetUdp()->GetFd(), buffer, bytesRead + sizeof(int), MSG_CONFIRM, (struct sockaddr*)&addr, sizeof(addr));
-            if (sent == -1)
-            {
-                std::cout << strerror(errno);
-                exit(1);
+            if(bytesRead > 0)
+            {                
+                PutUInt(buf, index);
+                int sent = sendto(destData->GetUdp()->GetFd(), buf, bytesRead + sizeof(int), MSG_CONFIRM, (struct sockaddr*)&addr, sizeof(addr));
+                if (sent == -1)
+                {
+                    std::cout << strerror(errno);
+                    exit(1);
+                }
+                int amount = (index * 50) / header.Segments();
+                for(int i = 0; i < amount; i++)
+                {
+                    std::cout<<"#";
+                }
+                for(int i = amount; i < 50 - 1; i++)
+                {
+                    std::cout<<"-";
+                }
+                std::cout<<">";
+                std::cout<<"\r"; 
+                index++;
+                totalSent += sent;
+                packetsSent++;
+                usleep(DGRAM_SEND_DELAY);
             }
-            int amount = (index * 50) / header.Segments();
-            for(int i = 0; i < amount; i++)
-            {
-                std::cout<<"#";
-            }
-            for(int i = amount; i < 50 - 1; i++)
-            {
-                std::cout<<"-";
-            }
-            std::cout<<">";
-            std::cout<<"\r";
-            index++;
-            totalSent += sent;
-            packetsSent++;
-            usleep(DGRAM_SEND_DELAY);
 	    }
         std::cout<<"\n\r";
         std::cout << "Bytes: " << totalSent << ", packets: " << packetsSent << std::endl;
         file.close();
-        delete[] buffer;
     }
+    return;
 }
 
 void ClientHandler::HandleConnection()

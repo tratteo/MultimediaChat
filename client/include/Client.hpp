@@ -55,7 +55,7 @@ class Client
 
     uint8_t lastReceived;
     char* serv_ip;
-    int udpPort;
+    int udpPort = 0;
     bool logged = false;
     bool connected = false;
     std::atomic<bool> shutDown;
@@ -67,7 +67,6 @@ class Client
     std::thread receiveDaemon;
     std::thread audioRecvThread;
     std::thread loginThread;
-
     std::list<bool*> acks;
 
 };
