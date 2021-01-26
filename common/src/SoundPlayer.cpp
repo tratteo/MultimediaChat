@@ -15,7 +15,7 @@ SoundPlayer::~SoundPlayer()
 void SoundPlayer::Init()
 {
 	channels = 2;
-	rate = 44100;
+	rate = 8000;
 	memset(&frames, 0x0, sizeof(frames));
 
 	//Black magic setup
