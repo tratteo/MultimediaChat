@@ -8,12 +8,15 @@ CSocket::CSocket(char* server_ip, int port)
 	this->serverIp = server_ip;
 
 	Init();
-
-	// Convert IPv4 and IPv6 addresses from text to binary form, if the conversion fails, the ip format is not correct
+	
+	//servAddr.sin_addr.s_addr = inet_addr(server_ip);
+	//Convert IPv4 and IPv6 addresses from text to binary form, if the conversion fails, the ip format is not correct
+ 	//servAddr.sin_addr.s_addr = inet_addr(server_ip); 
 	if (inet_pton(AF_INET, server_ip, &servAddr.sin_addr) <= 0)
 	{
 		handle_error("Invalid address/ Address not supported");
-	}
+	}  
+	//std::cout<<servAddr.sin_addr.s_addr<<std::endl;
 }
 
 void CSocket::Init()

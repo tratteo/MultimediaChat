@@ -16,7 +16,7 @@ int main()
 {
     //Making the main the smaller i can :-)
     
-    servSocket = new CSocket(8080);
+    servSocket = new CSocket(10000);
 
 	signal(SIGINT, CloseService);
 	signal(SIGTERM, CloseService);

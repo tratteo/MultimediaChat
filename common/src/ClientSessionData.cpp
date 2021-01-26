@@ -16,10 +16,10 @@ ClientSessionData::ClientSessionData(int fd, char* ip)
     this->fd = fd;
     this->ip = ip;
     this->owner = nullptr;
-    UDPSocket *sock = new UDPSocket(0);
+/*     UDPSocket *sock = new UDPSocket(0);
     int port = sock->GetPort();
-    delete sock;
-    udpSocket = new UDPSocket(port);
+    delete sock;  */
+    udpSocket = new UDPSocket(5001);
     	
 /* 	int flags = fcntl(fd, F_GETFL, 0);
 	fcntl(fd, F_SETFL, flags | O_NONBLOCK); */

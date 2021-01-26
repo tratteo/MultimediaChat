@@ -3,14 +3,14 @@
 Client::Client(char* servIp)
 {
 	//Create the TCP and UDP sockets
-	clientSocket = new CSocket(servIp, 8080);
+	clientSocket = new CSocket(servIp, 10000);
 	this->serv_ip = servIp;
 
 	//Horrible workaround :-)
-	UDPSocket *sock = new UDPSocket(0);
+/*  	UDPSocket *sock = new UDPSocket(0);
     int port = sock->GetPort();
-    delete sock;
-    udpSocket = new UDPSocket(port);
+    delete sock;  */
+    udpSocket = new UDPSocket(5000);
 
 	shutDown.store(false);
 
